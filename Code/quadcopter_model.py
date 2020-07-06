@@ -16,7 +16,7 @@ from quadcopter_parameter import get_quad_data
 
 
  
-class Quadcopter
+class Quadcopter:
     def __init__(self, dt, params):
         # store motor parameters in member variables
         self.dt  = dt               # simulation time step
@@ -40,13 +40,21 @@ class Quadcopter
         self.x = np.copy(x)
 
 
-#Simulate rotors dynamics
+    #Simulate rotors dynamics
     def simulate_rotors(self, torque):
         self.torque = torque
         
-        omega = omega + (torque -b*omega**2)/I__M*dt
-#Simulate drone dynamics
-    def simulate_drone(self,)
+        omega = omega + (torque -b*omega**2*np.sign(omega))/I__M*dt
+        
+    #Simulate drone dynamics
+    def simulate_drone(self,omega):
+        self.omega = omega
+        def f_x(x,t):
+            
+            
+        
+        
+        
         
     
         
