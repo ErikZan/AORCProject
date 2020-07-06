@@ -1,6 +1,7 @@
 from __future__ import print_function
 import numpy as np
 import matplotlib as matplot 
+import plot_utils as plut
 import sys
 import math
 import numpy.linalg as la
@@ -19,7 +20,9 @@ from quadcopter_parameter import get_quad_data
 class Quadcopter:
     def __init__(self, dt, params):
         # store motor parameters in member variables
+        self.g = 9.81
         self.dt  = dt               # simulation time step
+        self.m   = param.m                # mass of drone
         self.l   = param.l          # arm length
         self.k   = param.k          # air lift-force parameter
         self.b = param.b            # viscous friction parameter
@@ -30,34 +33,97 @@ class Quadcopter:
         self.A = param.A            # areodynamic drag coefficient
         
         # set initial states
-        self.x = np.zeros(6)        # position and orientation  of drone w.r.t absolute frame
-        self.x_dot = np.zeros(6)    # linear and angular velocities of drone
-        self.omega = n.zeros(4)     # rotors angular velocities
-        self.torque = n.zeros(4)    # rotors input torques
+        self.x = np.zeros(6,dtype=float)        # position and orientation  of drone w.r.t absolute frame
+        self.x_dot = np.zeros(6,dtype=float)    # linear and angular velocities of drone
+        self.omega = np.zeros(4,dtype=float)     # rotors angular velocities
+        self.torque = np.zeros(4,dtype=float)    # rotors input torques
         
 
-    def set_state(self, x):
+    def set_state(self, x,x_dot,omega):
         self.x = np.copy(x)
-
+        self.x_dot=np.copy(x_dot)
+        self.omega=np.copy(omega)
 
     #Simulate rotors dynamics
     def simulate_rotors(self, torque):
+        
+        I__M = self.I__M
+        b = self.b
+        dt = self.dt
+    
         self.torque = torque
         
-        omega = omega + (torque -b*omega**2*np.sign(omega))/I__M*dt
+        self.omega = self.omega + (torque -b*self.omega**2*np.sign(self.omega))/I__M*dt
         
     #Simulate drone dynamics
     def simulate_drone(self,omega):
         self.omega = omega
-        def f_x(x,t):
-            
-            
         
+        g=self.g
+        dt=self.dt
+        m= self.m   
+        l= self.l   
+        k= self.k   
+        b= self.b 
+        Ixx= self.Ixx   
+        Iyy= self.Iyy 
+        Izz= self.Izz
+        A = self.A         
         
+        Ax = np.array([0.1e1 / m * (math.sin(self.x[5]) * math.sin(self.x[3]) + math.cos(self.x[5]) * math.sin(self.x[4]) * math.cos(self.x[3])) * (0.1e1 / (omega[0] + 0.1e-7) * abs(omega[0] + 0.1e-7) * omega[0] ** 2 * k - 0.1e1 / (omega[1] + 0.1e-7) * abs(omega[1] + 0.1e-7) * omega[1] ** 2 * k + 0.1e1 / (omega[2] + 0.1e-7) * abs(omega[2] + 0.1e-7) * omega[2] ** 2 * k - 0.1e1 / (omega[3] + 0.1e-7) * abs(omega[3] + 0.1e-7) * omega[3] ** 2 * k) - A / m * self.x_dot[0],0.1e1 / m * (-math.cos(self.x[5]) * math.sin(self.x[3]) + math.sin(self.x[5]) * math.sin(self.x[4]) * math.cos(self.x[3])) * (0.1e1 / (omega[0] + 0.1e-7) * abs(omega[0] + 0.1e-7) * omega[0] ** 2 * k - 0.1e1 / (omega[1] + 0.1e-7) * abs(omega[1] + 0.1e-7) * omega[1] ** 2 * k + 0.1e1 / (omega[2] + 0.1e-7) * abs(omega[2] + 0.1e-7) * omega[2] ** 2 * k - 0.1e1 / (omega[3] + 0.1e-7) * abs(omega[3] + 0.1e-7) * omega[3] ** 2 * k) - A / m * self.x_dot[1],-g + 0.1e1 / m * math.cos(self.x[4]) * math.cos(self.x[3]) * (0.1e1 / (omega[0] + 0.1e-7) * abs(omega[0] + 0.1e-7) * omega[0] ** 2 * k - 0.1e1 / (omega[1] + 0.1e-7) * abs(omega[1] + 0.1e-7) * omega[1] ** 2 * k + 0.1e1 / (omega[2] + 0.1e-7) * abs(omega[2] + 0.1e-7) * omega[2] ** 2 * k - 0.1e1 / (omega[3] + 0.1e-7) * abs(omega[3] + 0.1e-7) * omega[3] ** 2 * k) - A / m * self.x_dot[2]])
         
+        self.x_dot[:3] += Ax*dt
+
         
+        self.x[:3] = self.x[:3] + self.x_dot[:3]*dt   
+        
+        Jinv = np.mat([[(Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz) / Ixx / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),math.sin(self.x[4]) * (Iyy - Izz) * math.cos(self.x[3]) * math.sin(self.x[3]) * math.cos(self.x[4]) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),-math.sin(self.x[4]) * (math.cos(self.x[3]) ** 2 * Iyy - math.cos(self.x[3]) ** 2 * Izz + Izz) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz)],[math.sin(self.x[4]) * (Iyy - Izz) * math.cos(self.x[3]) * math.sin(self.x[3]) * math.cos(self.x[4]) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),(Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + math.sin(self.x[4]) ** 2 * Ixx + Ixx * math.cos(self.x[4]) ** 2 - Iyy * math.cos(self.x[4]) ** 2 - Ixx) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),(Iyy - Izz) * math.cos(self.x[3]) * math.sin(self.x[3]) * math.cos(self.x[4]) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz)],[-math.sin(self.x[4]) * (math.cos(self.x[3]) ** 2 * Iyy - math.cos(self.x[3]) ** 2 * Izz + Izz) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),(Iyy - Izz) * math.cos(self.x[3]) * math.sin(self.x[3]) * math.cos(self.x[4]) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz),-(math.cos(self.x[3]) ** 2 * Iyy - math.cos(self.x[3]) ** 2 * Izz + Izz) / (Iyy ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 - 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 4 * math.cos(self.x[4]) ** 2 + Izz ** 2 * math.cos(self.x[3]) ** 2 * math.sin(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + Ixx * Iyy * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 + Ixx * Iyy * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Izz * math.sin(self.x[4]) ** 2 * math.cos(self.x[3]) ** 2 - Ixx * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Iyy ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 + 2 * Iyy * Izz * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Izz ** 2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) ** 2 - Ixx * Iyy * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.sin(self.x[4]) ** 2 + Ixx * Izz * math.cos(self.x[3]) ** 2 + Ixx * Izz * math.cos(self.x[4]) ** 2 - Iyy * Izz * math.cos(self.x[4]) ** 2 - Ixx * Izz)]])
+
+        tau_b = np.array([(0.1e1 / (self.omega[1] + 0.1e-7) * abs(self.omega[1] + 0.1e-7) * self.omega[1] ** 2 * k - 0.1e1 / (self.omega[3] + 0.1e-7) * abs(self.omega[3] + 0.1e-7) * self.omega[3] ** 2 * k) * l,(-0.1e1 / (self.omega[0] + 0.1e-7) * abs(self.omega[0] + 0.1e-7) * self.omega[0] ** 2 * k + 0.1e1 / (self.omega[2] + 0.1e-7) * abs(self.omega[2] + 0.1e-7) * self.omega[2] ** 2 * k) * l,self.torque[0] + self.torque[1] + self.torque[2] + self.torque[3]])
+        
+        C_eta = np.array([-self.x_dot[5] * self.x_dot[4] * math.cos(self.x[4]) * Ixx - (Iyy - Izz) * (-self.x_dot[4] ** 2 * math.cos(self.x[3]) * math.sin(self.x[3]) + 2 * (math.cos(self.x[3]) ** 2 - 0.1e1 / 0.2e1) * math.cos(self.x[4]) * self.x_dot[5] * self.x_dot[4] + self.x_dot[5] ** 2 * math.cos(self.x[3]) * math.sin(self.x[3]) * math.cos(self.x[4]) ** 2),-(Iyy - Izz) * (((-2 * math.cos(self.x[3]) ** 2 * math.cos(self.x[4]) + math.cos(self.x[4])) * self.x_dot[5] + 2 * self.x_dot[4] * math.cos(self.x[3]) * math.sin(self.x[3])) * self.x_dot[3] + math.sin(self.x[4]) * self.x_dot[5] * self.x_dot[4] * math.cos(self.x[3]) * math.sin(self.x[3])) - self.x_dot[5] * (math.sin(self.x[4]) * ((Iyy - Izz) * math.cos(self.x[3]) ** 2 + Ixx - Iyy) * math.cos(self.x[4]) * self.x_dot[5] - math.sin(self.x[4]) * math.cos(self.x[3]) * math.sin(self.x[3]) * (Iyy - Izz) * self.x_dot[4] - Ixx * self.x_dot[3] * math.cos(self.x[4])),-self.x_dot[4] ** 2 * math.sin(self.x[4]) * math.cos(self.x[3]) * math.sin(self.x[3]) * (Iyy - Izz) + 2 * (((Iyy - Izz) * math.cos(self.x[3]) ** 2 - Ixx / 2 - Iyy / 2 + Izz / 2) * self.x_dot[3] + self.x_dot[5] * math.sin(self.x[4]) * ((Iyy - Izz) * math.cos(self.x[3]) ** 2 + Ixx - Iyy)) * math.cos(self.x[4]) * self.x_dot[4] + 2 * math.cos(self.x[4]) ** 2 * self.x_dot[3] * self.x_dot[5] * math.cos(self.x[3]) * math.sin(self.x[3]) * (Iyy - Izz)])
+
+        self.x_dot[3:6] = self.x_dot[3:6] + Jinv.dot(np.transpose(tau_b-C_eta))*dt
+        self.x[3:6] = self.x[3:6] + self.x_dot[3:6]*dt
+        
+    def q(self):
+        return self.x
+    def p(self):
+        return self.omega
     
         
 
 if __name__=='__main__':  
+    
     param = get_quad_data('Quad1')
+    
+    dt = 1e-4
+    T = 10 
+    N = int(T/dt)  #number of time steps
+    q = np.zeros((6,N+1))
+    o = np.zeros((4,N+1))
+    Torque = np.zeros((4,N+1))
+    
+    drone = Quadcopter(dt,param)
+    #set initial conditions
+    drone.set_state(np.array([0.0,0.0,1.0,0.0,0.0,0.0]),np.array([0.0,0.0,0.0,0.0,0.0,0.0]),np.array([907.0,-907.0,907.0,-907.0])) 
+    Torque[:4,0] = np.array([0.0936+0.07,-0.0936-0.07,0.0936+0.07,-0.0936-0.07])
+    o[:4,0] = np.array([907,-907,907,-907])
+    q[:6,0] = np.array([0,0,1,0,0,0])
+    for i in range(N):
+        t=i*dt
+        Torque[:4,i+1]= np.array([0.0936,-0.0936,0.0936,-0.0936])
+        drone.simulate_rotors(Torque[:4,i+1])
+        o[:4,i+1]=drone.p()
+        drone.simulate_drone(drone.p())
+        q[:6,i+1] = drone.q()
+        
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[2,:N+1], label ='height')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    matplot.pyplot.show()
+
+    print("Final height", q[2,-1])
