@@ -7,7 +7,6 @@ import numpy.linalg as la
 from scipy.linalg import expm
 from math import sqrt
 
-import quadcopter_parameter 
 
 
 class Empty:

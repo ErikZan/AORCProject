@@ -4,7 +4,7 @@ import matplotlib as matplot
 import sys
 import math
 import numpy.linalg as la
-
+import matplotlib.pyplot as plt
 from math import sqrt
 from scipy.integrate import odeint
 
@@ -13,10 +13,11 @@ def model(y,t):
     dydt = -k*y
     return dydt
   
-y0 = 5
+ys = 5
 
 t=np.linspace(0,20)
 
-y=odeint(model,y0,t)
+y=odeint(model,ys,t)
 
-matplot.pyplot.plot(t.y)
+plt.plot(t,y)
+plt.show()
