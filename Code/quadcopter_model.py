@@ -9,14 +9,8 @@ from scipy.linalg import expm
 from math import sqrt
 from scipy.integrate import odeint
 
-
-
 from quadcopter_parameter import get_quad_data
 
-
-
-
- 
 class Quadcopter:
     def __init__(self, dt, params):
         # store motor parameters in member variables
@@ -91,39 +85,103 @@ class Quadcopter:
     def p(self):
         return self.omega
     
-        
-
 if __name__=='__main__':  
     
     param = get_quad_data('Quad1')
     
     dt = 1e-4
-    T = 10 
+    T = 1
     N = int(T/dt)  #number of time steps
     q = np.zeros((6,N+1))
     o = np.zeros((4,N+1))
     Torque = np.zeros((4,N+1))
-    
     drone = Quadcopter(dt,param)
+    
     #set initial conditions
-    drone.set_state(np.array([0.0,0.0,1.0,0.0,0.0,0.0]),np.array([0.0,0.0,0.0,0.0,0.0,0.0]),np.array([907.0,-907.0,907.0,-907.0])) 
-    Torque[:4,0] = np.array([0.0936+0.07,-0.0936-0.07,0.0936+0.07,-0.0936-0.07])
-    o[:4,0] = np.array([907,-907,907,-907])
+    
+    drone.set_state(np.array([0.0,0.0,1.0,0.0,0.0,0.0]),np.array([0.0,0.0,0.0,0.0,0.0,0.0]),np.array([620.6107625,-620.6107625,620.6107625,-620.6107625])) 
     q[:6,0] = np.array([0,0,1,0,0,0])
-    for i in range(N):
-        t=i*dt
-        Torque[:4,i+1]= np.array([0.0936,-0.0936,0.0936,-0.0936])
-        drone.simulate_rotors(Torque[:4,i+1])
-        o[:4,i+1]=drone.p()
+    
+    # simulate rotor and drone dynamics
+    
+    for i in range(N+1):
+        Torque[:4,i]= np.array([0.04390797988,-0.043907979880,0.04390797988,-0.04390797988])
+        drone.simulate_rotors(Torque[:4,i])
         drone.simulate_drone(drone.p())
-        q[:6,i+1] = drone.q()
+        q[:6,i] = drone.q()
+     
         
+    #Plot stuffs
+    
     f, ax = plut.create_empty_figure(1)
     time = np.arange(0.0, T+dt, dt)
     time = time[:N+1]
-    ax.plot(time, q[2,:N+1], label ='height')
+    ax.plot(time, q[0,:N+1], label ='x')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    
+
+    print("Final height", q[0,-1])
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[1,:N+1], label ='y')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    
+
+    print("Final height", q[1,-1])
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[2,:N+1], label ='z')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    
+
+    print("Final height", q[2,-1])
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[3,:N+1], label ='phi')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    
+
+    print("Final height", q[3,-1])
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[4,:N+1], label ='theta')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+
+
+    print("Final height", q[4,-1])
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, q[5,:N+1], label ='psi')
     ax.legend()
     matplot.pyplot.xlabel('Time [s]')
     matplot.pyplot.show()
 
-    print("Final height", q[2,-1])
+    print("Final height", q[5,-1])
+    
+    # f, ax = matplot.pyplot.subplots(2,1,sharex=True)
+    # time = np.arange(0.0, T+dt, dt)
+    # time = time[:N+1]
+    # ax[0].plot(time, q[0], label ='x')
+    # ax[0].plot(time, q[1], label ='y')
+    # ax[0].plot(time, q[2], label ='z')
+    # ax[1].plot(time, q[3], label ='phi')
+    # ax[1].plot(time, q[4], label ='theta')
+    # ax[1].plot(time, q[5], label ='psi')
+    # for i in range(2): ax[i].legend()
+    # matplot.pyplot.xlabel('Time [s]')
+    # matplot.pyplot.show()
