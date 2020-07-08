@@ -1,8 +1,8 @@
 ground := Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], attributes =
 [protected, protected, ground]);
-omegaMV := table([(frame)=(Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1
-]], attributes = [protected, protected, ground])),(obj)=VECTOR,(comps)=(Matrix(\
-4, 1, [[0],[0],[0],[0]]))]);
+omegaMV := table([(comps)=(Matrix(4, 1, [[0],[0],[0],[0]])),(frame)=(Matrix(4,
+4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], attributes = [protected, 
+protected, ground])),(obj)=VECTOR]);
 draw_link := proc (P1::POINT, P2::POINT, data, sol, wb := .17e-1, {col := 
 "SkyBlue"}, $) local tmp1, tmp2; tmp1 := simplify(subs(sol,data,[
 MBSymba_r6_kinematics:-comp_XYZ(P1,ground)])); tmp2 := simplify(subs(sol,data,[
