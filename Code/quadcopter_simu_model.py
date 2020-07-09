@@ -58,7 +58,6 @@ class Quadcopter:
         m= self.m   
         l= self.l   
         k= self.k   
-        b= self.b 
         Ixx= self.Ixx   
         Iyy= self.Iyy 
         Izz= self.Izz
