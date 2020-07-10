@@ -35,7 +35,7 @@ class SingleShootingProblem:
                
         self.nq = int(x0.shape[0]/2)
         self.nx = x0.shape[0]
-        self.nu = 6
+        self.nu = 4
         self.X = np.zeros((N, self.x0.shape[0]))
         self.U = np.zeros((N, 6))
         self.last_cost = 0.0
@@ -70,8 +70,8 @@ class SingleShootingProblem:
                 dci = ci_x.dot(dXdU[i*nx:(i+1)*nx,:]) 
                 dci[i*nu:(i+1)*nu] += ci_u
                 
-                cost += w * dt * ci
-                grad += w * dt * dci
+                cost += w * self.dt * ci
+                grad += w * self.dt * dci
                 t += self.dt
         return (cost, grad)
         
@@ -205,7 +205,7 @@ if __name__=='__main__':
     # simulate motion with initial guess    
         #Noooope meme
     # create cost function terms
-    final_cost_state = OCPFinalCostState( conf.q_des, np.zeros(6), conf.weight_vel)
+    final_cost_state = OCPFinalCostState( conf.q_des, conf.dp_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
     effort_cost = OCPRunningCostQuadraticControl( dt)
     problem.add_running_cost(effort_cost, conf.weight_u)    

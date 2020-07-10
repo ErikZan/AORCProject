@@ -18,7 +18,7 @@ class Control_dynamics_1:
         self.Iyy = param.Iyy        # Y-axis inertia
         self.Izz = param.Izz  
         self.nx =12   
-        self.nu =12    # Z-axis inertia
+        self.nu =4    # Z-axis inertia
         #self.A = param.A            # areodynamic drag coefficient
         
         
