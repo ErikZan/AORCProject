@@ -14,6 +14,7 @@ from numerical_integration_quad import Integrator
 import math
 import single_shooting_conf as conf
 from quadcopter_parameter import get_quad_data
+import pandas as pd 
 class Empty:
     def __init__(self):
         pass
@@ -216,5 +217,5 @@ if __name__=='__main__':
     problem.solve(use_finite_difference=conf.use_finite_difference)
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)
-    
+    pd.DataFrame(problem.X).to_csv("/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/file.csv")
    
