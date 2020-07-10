@@ -18,7 +18,7 @@ integration_scheme = 'RK-4'
 use_finite_difference = False
 weight_vel = 1e-1000 # cost function weight for final velocity (for position it's implicitely 1)
 weight_u = 1e-3  # cost function weight for control
-q_des = np.array([100.0,100.0,100.0,0.0,0.0,0.0])
+q_des = np.array([0.0,0.0,100.0,0.0,0.0,0.0])
 v_des = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 dp_des=np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 
