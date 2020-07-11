@@ -1,8 +1,8 @@
 ground := Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], attributes =
 [protected, protected, ground]);
-omegaMV := table([(comps)=(Matrix(4, 1, [[0],[0],[0],[0]])),(frame)=(Matrix(4,
-4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], attributes = [protected, 
-protected, ground])),(obj)=VECTOR]);
+omegaMV := table([(obj)=VECTOR,(frame)=(Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,
+1,0],[0,0,0,1]], attributes = [protected, protected, ground])),(comps)=(Matrix(\
+4, 1, [[0],[0],[0],[0]]))]);
 draw_link := proc (P1::POINT, P2::POINT, data, sol, wb := .17e-1, {col := 
 "SkyBlue"}, $) local tmp1, tmp2; tmp1 := simplify(subs(sol,data,[
 MBSymba_r6_kinematics:-comp_XYZ(P1,ground)])); tmp2 := simplify(subs(sol,data,[
@@ -10,14 +10,11 @@ MBSymba_r6_kinematics:-comp_XYZ(P2,ground)])); plottools[plottools:-arrow](tmp1
 ,tmp2,wb,0,0,cylindrical_arrow,color = col); end proc;
 small_vars := {};
 dependent_coordinates := false;
-draw_quadcopter := proc (data, sol) draw_sphere(Obody,r = 
-MBSymba_r6_foundations:-`*`(10,.5e-1),data,sol,col = "LightSalmon"), 
-draw_sphere(OmF,r = MBSymba_r6_foundations:-`*`(10,.2e-1),data,sol), 
-draw_sphere(OmB,r = MBSymba_r6_foundations:-`*`(10,.2e-1),data,sol), 
-draw_sphere(OmL,r = MBSymba_r6_foundations:-`*`(10,.2e-1),data,sol), 
-draw_sphere(OmR,r = MBSymba_r6_foundations:-`*`(10,.2e-1),data,sol), draw_link(
-OmF,OmB,data,sol,col = "Blue"), draw_link(OmL,OmR,data,sol,col = "Blue"); end 
-proc;
+draw_quadcopter := proc (data, sol, R) draw_sphere(Obody,r = 
+MBSymba_r6_foundations:-`*`(R,1.5),data,sol,col = "LightSalmon"), draw_sphere(
+OmF,r = R,data,sol), draw_sphere(OmB,r = R,data,sol), draw_sphere(OmL,r = R,
+data,sol), draw_sphere(OmR,r = R,data,sol), draw_link(OmF,OmB,data,sol,col = 
+"Blue"), draw_link(OmL,OmR,data,sol,col = "Blue"); end proc;
 fname := "Functions.mpl";
 mframe_flag := false;
 transform_obj := proc (RF::frame, obj::function, col::string := "", transp::

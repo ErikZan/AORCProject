@@ -51,7 +51,7 @@ class OCPRunningCostQuadraticControl:
         
     def compute(self, x, u, t, recompute=True):
         ''' Compute the cost for a single time instant'''
-        cost = 0.5*u.dot(u)
+        cost = 0.5*u.dot(u) 
         return cost
         
     def compute_w_gradient(self, x, u, t, recompute=True):

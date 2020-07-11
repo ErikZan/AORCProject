@@ -154,13 +154,13 @@ end proc:</Text-field>
 </Input>
 </Group>
 <Group labelreference="L6" drawlabel="true" applyint="true" applyrational="true" applyexponent="false">
-<Input><Text-field prompt="&gt; " style="Maple Input" layout="Normal">draw_quadcopter:=proc(data,sol)
+<Input><Text-field prompt="&gt; " style="Maple Input" layout="Normal">draw_quadcopter:=proc(data,sol,R)
 
-   draw_sphere(Obody,r=10*0.05,data,sol,col=&quot;LightSalmon&quot;),
-   draw_sphere(OmF,r=10*0.02,data,sol),   
-   draw_sphere(OmB,r=10*0.02,data,sol),
-   draw_sphere(OmL,r=10*0.02,data,sol),
-   draw_sphere(OmR,r=10*0.02,data,sol),
+   draw_sphere(Obody,r=R*1.5,data,sol,col=&quot;LightSalmon&quot;),
+   draw_sphere(OmF,r=R,data,sol),   
+   draw_sphere(OmB,r=R,data,sol),
+   draw_sphere(OmL,r=R,data,sol),
+   draw_sphere(OmR,r=R,data,sol),
    draw_link(OmF,OmB,data,sol,col=&quot;Blue&quot;),
    draw_link(OmL,OmR,data,sol,col=&quot;Blue&quot;)
 end proc:</Text-field>

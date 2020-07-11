@@ -156,10 +156,10 @@ class SingleShootingProblem:
         print('Start optimizing')
         if(use_finite_difference):
             r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 100, 'disp': True})
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True})
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 100, 'disp': True})
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True})
         return r
         
     def sanity_check_cost_gradient(self, N_TESTS=10):
@@ -180,8 +180,8 @@ class SingleShootingProblem:
     def clbk(self, xk):
         print('Iter %3d, cost %5f'%(self.iter, self.last_cost))
         self.iter += 1
-       
-        return False
+        file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
+        return file
         
     
         
@@ -192,8 +192,15 @@ if __name__=='__main__':
     import time
     from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl
     import single_shooting_conf as conf
+    import os
+    
+    # delete previous csv 
+    
+    #os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
+    os.system('./stored_trajectory/delete_csv.sh')
+   
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
-        
+    
     dt = conf.dt                 # time step
     T = conf.T
     N = int(T/dt)        # horizon size
@@ -206,7 +213,7 @@ if __name__=='__main__':
     # simulate motion with initial guess    
         #Noooope meme
     # create cost function terms
-    final_cost_state = OCPFinalCostState( conf.q_des, conf.dp_des, conf.weight_vel)
+    final_cost_state = OCPFinalCostState( conf.q_des, conf.v_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
     effort_cost = OCPRunningCostQuadraticControl( dt)
     problem.add_running_cost(effort_cost, conf.weight_u)    
@@ -217,5 +224,9 @@ if __name__=='__main__':
     problem.solve(use_finite_difference=conf.use_finite_difference)
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)
-    pd.DataFrame(problem.X).to_csv("/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/file.csv")
+    
+    import datetime
+
+    datetime_object = datetime.datetime.minute
+    pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
    
