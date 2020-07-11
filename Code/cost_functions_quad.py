@@ -46,18 +46,18 @@ class OCPFinalCostState:
         
 class OCPRunningCostQuadraticControl:
     ''' Quadratic cost function for penalizing control inputs '''
-    def __init__(self, dt):
+    def __init__(self, dt, weight_run_state):
         self.dt = dt
-        
+        self.weight_run_state = weight_run_state
     def compute(self, x, u, t, recompute=True):
         ''' Compute the cost for a single time instant'''
-        cost = 0.5*u.dot(u) 
+        cost = 0.5*u.dot(u) + 0.5*self.weight_run_state*x.dot(x)
         return cost
         
     def compute_w_gradient(self, x, u, t, recompute=True):
         ''' Compute the cost for a single time instant and its gradient w.r.t. x and u '''
-        cost = 0.5*u.dot(u)
-        grad_x = np.zeros(x.shape[0])
+        cost = 0.5*u.dot(u)+ 0.5*self.weight_run_state*x.dot(x)
+        grad_x = self.weight_run_state*x
         grad_u = u
         return (cost, grad_x, grad_u)
 

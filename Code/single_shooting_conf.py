@@ -13,13 +13,26 @@ np.set_printoptions(precision=3, linewidth=200, suppress=True)
 LINE_WIDTH = 60
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 T = 1.5                       # OCP horizon
-dt = 0.02                     # OCP time step
+dt = 0.05                     # OCP time step
 integration_scheme = 'RK-4'
-use_finite_difference = True
-weight_vel = 1 # cost function weight for final velocity (for position it's implicitely 1)
-weight_u = 1  # cost function weight for control
+use_finite_difference = False
+weight_vel = 0.5# cost function weight for final velocity (for position it's implicitely 1)
+#weight_u = 1.0  # cost function weight for control
+weight_run_state= 2300000.0 #np.identity(12) # weight matrix for the state
+weight_r= 0.1e-7   # weight of runnig cost
 q_des = np.array([2.0,1.0,2.0,0.0,0.0,0.0])
 v_des = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
-
+#weight_run_state=np.array([[1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+      #  [0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+      #  [0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+      #  [0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.],
+      #  [0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0.],
+      #  [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
+      #  [0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+      #  [0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
+      #  [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0.],
+      #  [0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0.],
+      #  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.],
+      #  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.]])
 
 

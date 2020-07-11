@@ -215,8 +215,8 @@ if __name__=='__main__':
     # create cost function terms
     final_cost_state = OCPFinalCostState( conf.q_des, conf.v_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
-    effort_cost = OCPRunningCostQuadraticControl( dt)
-    problem.add_running_cost(effort_cost, conf.weight_u)    
+    effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state)
+    problem.add_running_cost(effort_cost, conf.weight_r)    
 #    problem.sanity_check_cost_gradient()
     
     # solve OCP
@@ -229,4 +229,5 @@ if __name__=='__main__':
 
     datetime_object = datetime.datetime.minute
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
+    pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
    
