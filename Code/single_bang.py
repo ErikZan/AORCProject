@@ -146,6 +146,25 @@ class SingleShootingProblem:
         return (cost, grad)
         
         
+    def solve_bounds(self, y0=None, method='BFGS', use_finite_difference=False,bnds=None):
+        ''' Solve the optimal control problem '''
+        # if no initial guess is given => initialize with zeros
+        if(y0 is None):
+            y0 = np.zeros(self.N*self.nu)
+        # if no bounds give a array of no-bounds .. maybe    
+        if(bnds is None):
+            bnds = ((None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None))
+            
+        self.iter = 0
+        print('Start optimizing')
+        if(use_finite_difference):
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds)
+        else:
+            r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds)
+        return r
+    
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
         ''' Solve the optimal control problem '''
         # if no initial guess is given => initialize with zeros
@@ -155,7 +174,7 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method,
                      callback=self.clbk, options={'maxiter': 200, 'disp': True})
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
@@ -218,12 +237,25 @@ if __name__=='__main__':
     effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state)
     problem.add_running_cost(effort_cost, conf.weight_r)    
 #    problem.sanity_check_cost_gradient()
-    
+   
+  
     # solve OCP
 #    problem.solve(method='Nelder-Mead') # solve with non-gradient based solver
     problem.solve(use_finite_difference=conf.use_finite_difference)
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)
+
+     
+    """    
+    # Solving OCP adding bound on angles
+    bnds = ((None, None), (None, None), (None, None), (-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None))
+    #from scipy.optimize import Bounds
+    #bbounds = Bounds([None, None], [None, None],[None, None],[-1.0, 1.0],[-1.0, 1.0],[-1.0, 1.0],[None, None],[None, None],[None, None],[None, None],[None, None],[None, None])
+    import scipy
+    #bnds = scipy.optimize.bounds([None,None],[None,None],[None,None],[-1.0,1.0],[-1.0,1.0],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None])
+    problem.solve_bounds(method='SLSQP',use_finite_difference=conf.use_finite_difference,bnds=bnds)
+    """
+    
     
     import datetime
 
