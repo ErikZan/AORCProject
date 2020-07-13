@@ -151,15 +151,16 @@ class SingleShootingProblem:
         # if no initial guess is given => initialize with zeros
         if(y0 is None):
             y0 = np.zeros(self.N*self.nu)
-        # if no bounds give a array of no-bounds .. maybe    
-        if(bnds is None):
-            bnds = ((None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None))
-            
+        # define constraint
+        #cons1 = {'type': 'ineq', 'fun': self.compute_cost_w_gradient_fd.X[3] +0.1 }
+        cons1 = {'type': 'ineq', 'fun': self.X[3]+0.1}
+
+        cons = [None]# [cons1,cons2] 
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
             r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds)
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
                      callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds)
@@ -201,6 +202,10 @@ class SingleShootingProblem:
         self.iter += 1
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
         return file
+    
+    #def constraint_on_X(self)
+
+    #    return 
         
     
         
@@ -234,27 +239,36 @@ if __name__=='__main__':
     # create cost function terms
     final_cost_state = OCPFinalCostState( conf.q_des, conf.v_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
-    effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state)
+    effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state) # effort cost modificato
     problem.add_running_cost(effort_cost, conf.weight_r)    
 #    problem.sanity_check_cost_gradient()
    
-  
+    """
     # solve OCP
 #    problem.solve(method='Nelder-Mead') # solve with non-gradient based solver
     problem.solve(use_finite_difference=conf.use_finite_difference)
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)
-
+    
      
     """    
-    # Solving OCP adding bound on angles
-    bnds = ((None, None), (None, None), (None, None), (-1.0, 1.0), (-1.0, 1.0), (-1.0, 1.0), (None, None), (None, None), (None, None), (None, None), (None, None), (None, None))
-    #from scipy.optimize import Bounds
-    #bbounds = Bounds([None, None], [None, None],[None, None],[-1.0, 1.0],[-1.0, 1.0],[-1.0, 1.0],[None, None],[None, None],[None, None],[None, None],[None, None],[None, None])
-    import scipy
-    #bnds = scipy.optimize.bounds([None,None],[None,None],[None,None],[-1.0,1.0],[-1.0,1.0],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None])
-    problem.solve_bounds(method='SLSQP',use_finite_difference=conf.use_finite_difference,bnds=bnds)
+    # Buonds on u value
+    a = (None,None)
+    b = (0.0,None)
+    bnds = (a,a,a,b)*N
+    #print('bounds:', bnds)
+    
+    # bounds on X state value, implemented as constraints ?
+    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 }
+    cons2 = {'type': 'ineq', 'fun': -compute_cost_w_gradient_fd.X[3] -0.1 }
+    
+    all_cons = [cons1,cons2]
     """
+    # function that use bounds
+    
+    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
+    print('U norm:', norm(problem.U))
+    print('X_N\n', problem.X[-1,:].T)
     
     
     import datetime
