@@ -15,6 +15,9 @@ import math
 import single_shooting_conf as conf
 from quadcopter_parameter import get_quad_data
 import pandas as pd 
+import matplotlib as matplot
+import plot_utils as plut
+
 class Empty:
     def __init__(self):
         pass
@@ -153,8 +156,8 @@ class SingleShootingProblem:
             y0 = np.zeros(self.N*self.nu)
         # define constraint
         #cons1 = {'type': 'ineq', 'fun': self.compute_cost_w_gradient_fd.X[3] +0.1 }
-        cons1 = {'type': 'ineq', 'fun': self.X[3]+0.1}
-
+        cons1 = {'type': 'ineq', 'fun': self.X[3] + 0.1}
+        print(cons1)
         cons = [None]# [cons1,cons2] 
         self.iter = 0
         print('Start optimizing')
@@ -276,4 +279,19 @@ if __name__=='__main__':
     datetime_object = datetime.datetime.minute
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
     pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
+    
+    aaa = problem.U
+    print(aaa)
+    
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N+1]
+    ax.plot(time, problem.U[0,:N], label ='manouvre phi')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+  
+
    
+    
+    
