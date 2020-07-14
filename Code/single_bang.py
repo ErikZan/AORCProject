@@ -162,8 +162,8 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, # 
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
                      callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds)
@@ -178,8 +178,8 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method,
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True})
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, # ah quindi la roba dei bound/constraint è quello su
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True}) # si
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
                      callback=self.clbk, options={'maxiter': 200, 'disp': True})
@@ -255,24 +255,28 @@ if __name__=='__main__':
     
      
     """    
-    # Buonds on u value
-    a = (None,None)
-    b = (0.0,None)
-    bnds = (a,a,a,b)*N
+    # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
+    a = (None,None) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
+    b = (0.0,None) # de ve essere superiore a zero
+    bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
     
     # bounds on X state value, implemented as constraints ?
-    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 }
+    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 } sisi aspe guarda una cosa
     cons2 = {'type': 'ineq', 'fun': -compute_cost_w_gradient_fd.X[3] -0.1 }
     
-    all_cons = [cons1,cons2]
+    all_cons = [cons1,cons2] # 
     """
     # function that use bounds
     
     problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
     print('U norm:', norm(problem.U))
-    print('X_N\n', problem.X[-1,:].T)
-    
+    print('X_N\n', problem.X[-1,:].T) # si il problema è che lui li vuole su quello che chiama x0 che in realtà per noi è y0 e sarebbe l'input. 
+                                      #gli stati lui li calcola da quello in teoria e non sono ancora riuscito a passarglieli
+                                      
+                                      #prima di faccio vedere altre due robe
+                                      
+     
     
     import datetime
 
@@ -285,25 +289,26 @@ if __name__=='__main__':
     f, ax = plut.create_empty_figure(1)
     time = np.arange(0.0, T+dt, dt)
     time = time[:N]
-    ax.plot(time, problem.U[:N,0], label ='U manouvre phi')
-    ax.plot(time, problem.U[:N,1], label ='U manouvre theta')
-    ax.plot(time, problem.U[:N,2], label ='U manouvre psi')
-    ax.plot(time, problem.U[:N,1], label ='U manouvre thrust')
+    ax.plot(time, problem.U[:N,1], label ='U manouvre phi')
+    ax.plot(time, problem.U[:N,2], label ='U manouvre theta')
+    ax.plot(time, problem.U[:N,3], label ='U manouvre psi')
     ax.legend()
     matplot.pyplot.xlabel('Time [s]')
     
     f, ax = plut.create_empty_figure(1)
     time = np.arange(0.0, T+dt, dt)
     time = time[:N]
-    ax.plot(time, problem.X[:N,3], label ='angle phi')
-    ax.plot(time, problem.X[:N,4], label ='angle theta')
-    ax.plot(time, problem.X[:N,5], label ='angle psi')
+    ax.plot(time, problem.U[:N,0], label ='Thrust')
     ax.legend()
     matplot.pyplot.xlabel('Time [s]')
     
-    plt.show()
-  
-
-   
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N]
+    ax.plot(time, problem.X[:N,3]*180/3.14, label ='angle phi')
+    ax.plot(time, problem.X[:N,4]*180/3.14, label ='angle theta')
+    ax.plot(time, problem.X[:N,5]*180/3.14, label ='angle psi')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
     
-    
+    plt.show() 
