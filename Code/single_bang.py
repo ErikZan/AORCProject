@@ -148,17 +148,13 @@ class SingleShootingProblem:
         self.last_cost = cost        
         return (cost, grad)
         
-        
+    
     def solve_bounds(self, y0=None, method='BFGS', use_finite_difference=False,bnds=None):
         ''' Solve the optimal control problem '''
         # if no initial guess is given => initialize with zeros
         if(y0 is None):
             y0 = np.zeros(self.N*self.nu)
-        # define constraint
-        #cons1 = {'type': 'ineq', 'fun': self.compute_cost_w_gradient_fd.X[3] +0.1 }
-        cons1 = {'type': 'ineq', 'fun': self.X[:N,3] + 0.1}
-        print(cons1)
-        cons = [None]# [cons1,cons2] 
+        
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
@@ -178,8 +174,8 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, # ah quindi la roba dei bound/constraint è quello su
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True}) # si
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, 
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True}) 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
                      callback=self.clbk, options={'maxiter': 200, 'disp': True})
@@ -206,10 +202,30 @@ class SingleShootingProblem:
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
         return file
     
-    #def constraint_on_X(self)
-
-    #    return 
+    def fun_cons_phi(self, U ):
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        #runnugn cost w g
+        #cons = 0.0
+        #grad = np.zeros(self.N*self.nu)
         
+        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
+        #vocal
+        
+        for i in range(U.shape[0]):
+            ci =  math.sqrt((self.bound_phi - X[12*i+3])**2)
+            #ci_x= np.array([0,0,0,ci,0,0,0,0,0,0.0.0])
+            #dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            a = {'type': 'ineq', 'fun': 1 - X[12*i+3] }
+            b = {'type': 'ineq', 'fun': -1 + X[12*i+3] }
+            tmp += (a,b)
+            #cons += self.dt * ci
+            #grad += self.dt * dci
+        return tmp
+    
+     
     
         
 
@@ -271,18 +287,14 @@ if __name__=='__main__':
     
     problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
     print('U norm:', norm(problem.U))
-    print('X_N\n', problem.X[-1,:].T) # si il problema è che lui li vuole su quello che chiama x0 che in realtà per noi è y0 e sarebbe l'input. 
-                                      #gli stati lui li calcola da quello in teoria e non sono ancora riuscito a passarglieli
-                                      
-                                      #prima di faccio vedere altre due robe
-                                      
-     
+    print('X_N\n', problem.X[-1,:].T)                                       
     
     import datetime
 
     datetime_object = datetime.datetime.minute
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
     pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
+    
     
     # all in one plot
     
