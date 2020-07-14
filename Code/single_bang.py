@@ -156,7 +156,7 @@ class SingleShootingProblem:
             y0 = np.zeros(self.N*self.nu)
         # define constraint
         #cons1 = {'type': 'ineq', 'fun': self.compute_cost_w_gradient_fd.X[3] +0.1 }
-        cons1 = {'type': 'ineq', 'fun': self.X[3] + 0.1}
+        cons1 = {'type': 'ineq', 'fun': self.X[:N,3] + 0.1}
         print(cons1)
         cons = [None]# [cons1,cons2] 
         self.iter = 0
@@ -280,16 +280,28 @@ if __name__=='__main__':
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
     pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
     
-    aaa = problem.U
-    print(aaa)
-    
+    # all in one plot
     
     f, ax = plut.create_empty_figure(1)
     time = np.arange(0.0, T+dt, dt)
-    time = time[:N+1]
-    ax.plot(time, problem.U[0,:N], label ='manouvre phi')
+    time = time[:N]
+    ax.plot(time, problem.U[:N,0], label ='U manouvre phi')
+    ax.plot(time, problem.U[:N,1], label ='U manouvre theta')
+    ax.plot(time, problem.U[:N,2], label ='U manouvre psi')
+    ax.plot(time, problem.U[:N,1], label ='U manouvre thrust')
     ax.legend()
     matplot.pyplot.xlabel('Time [s]')
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N]
+    ax.plot(time, problem.X[:N,3], label ='angle phi')
+    ax.plot(time, problem.X[:N,4], label ='angle theta')
+    ax.plot(time, problem.X[:N,5], label ='angle psi')
+    ax.legend()
+    matplot.pyplot.xlabel('Time [s]')
+    
+    plt.show()
   
 
    

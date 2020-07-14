@@ -13,7 +13,7 @@ np.set_printoptions(precision=3, linewidth=200, suppress=True)
 LINE_WIDTH = 60
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 T = 1.5     # 1,5                  # OCP horizon
-dt = 0.04                     # OCP time step
+dt = 0.05                     # OCP time step
 integration_scheme = 'RK-4'
 use_finite_difference = False
 weight_vel = 0.5           #a=0.5              # cost function weight for final velocity (for position it's implicitely 1)
