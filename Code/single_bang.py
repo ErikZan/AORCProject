@@ -46,6 +46,13 @@ class SingleShootingProblem:
         self.running_costs = []
         self.final_costs = []
         
+        self.bound_phi = 0.7
+        self.grad_phi = np.array([])
+        
+        self.bound_theta = 0.7
+        self.grad_theta = np.array([])
+        self.tmp=1
+        
     def add_running_cost(self, c, weight=1):
         self.running_costs += [(weight,c)]
     
@@ -162,7 +169,7 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds)
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,constraints=({'type':'ineq','fun': self.fun_cons_phi,'jac':self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta}))
         return r
     
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
@@ -202,30 +209,83 @@ class SingleShootingProblem:
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
         return file
     
-    def fun_cons_phi(self, U ):
+    def fun_cons_phi(self, y ):
+        U = y.reshape((self.N, self.nu))
         t0 = 0.0
         X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
         #runnugn cost w g
-        #cons = 0.0
+        cons = np.array([])
         #grad = np.zeros(self.N*self.nu)
-        
+        #grad = np.array([])
         #dictionary = {'type': 'ineq', 'fun': fun_c :  }
         #vocal
         
         for i in range(U.shape[0]):
-            ci =  math.sqrt((self.bound_phi - X[12*i+3])**2)
-            #ci_x= np.array([0,0,0,ci,0,0,0,0,0,0.0.0])
-            #dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
-            a = {'type': 'ineq', 'fun': 1 - X[12*i+3] }
-            b = {'type': 'ineq', 'fun': -1 + X[12*i+3] }
-            tmp += (a,b)
-            #cons += self.dt * ci
-            #grad += self.dt * dci
-        return tmp
+            ci =  self.bound_phi - np.absolute(X[i,3])
+            ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
+            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            cons = np.append(cons,ci_x) 
+            self.tmp += 1
+            print(self.tmp)
+            #grad += dci
+            if i<1:
+                grad = dci
+            else :
+                grad = np.append(grad,dci)
+        #self.tmp += 1
+        print(grad)    
+        self.grad_phi = grad
+        return (cons,grad)
     
-     
+    def fun_cons_theta(self, y ):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        #runnugn cost w g
+        cons = np.array([])
+        #grad = np.zeros(self.N*self.nu)
+        grad = np.array([])
+        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
+        #vocal
+        
+        for i in range(U.shape[0]):
+            ci =  self.bound_theta - np.absolute(X[i,4])
+            ci_x= np.array([0.0,0.0,0.0,0.0,ci*np.sign(X[i,4]),0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
+            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            cons = np.append(cons,ci_x)
+            #grad += dci
+            grad = np.append(grad,dci)
+        
+        self.grad_theta = grad
+        return cons
+    
+    def jac_phi(self,y):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        #runnugn cost w g
+        cons = np.array([])
+        #grad = np.zeros(self.N*self.nu)
+        grad = np.array([])
+        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
+        #vocal
+        
+        for i in range(U.shape[0]):
+            ci =  self.bound_phi - np.absolute(X[i,3])
+            ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
+            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            cons = np.append(cons,ci_x)
+            #grad += dci
+            grad = np.append(grad,dci)
+            
+        self.grad_phi = grad
+        return grad
     
         
 
@@ -240,7 +300,7 @@ if __name__=='__main__':
     # delete previous csv 
     
     #os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
-    os.system('./stored_trajectory/delete_csv.sh')
+    #os.system('./stored_trajectory/delete_csv.sh')
    
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
     
