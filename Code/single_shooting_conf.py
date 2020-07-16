@@ -20,7 +20,7 @@ weight_vel = 0.5           #a=0.5              # cost function weight for final 
 #weight_u = 1.0                                 # cost function weight for control
 #weight_run_state= 2300000.0 #a=2300000.0        # np.identity(12) # weight matrix for the state
 weight_r= 0.1e-7           #a=0.1e-7           # weight of runnig cost
-q_des = np.array([2.0,3.0,3.0,0.0,0.0,0.0])
+q_des = np.array([4.0,0.0,1.0,0.0,0.0,0.0])
 v_des = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 weight_run_state = np.array([[0.1, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
        [0., 0.1, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],

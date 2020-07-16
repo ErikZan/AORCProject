@@ -46,12 +46,21 @@ class SingleShootingProblem:
         self.running_costs = []
         self.final_costs = []
         
-        self.bound_phi = 0.7
+        self.bound_phi = 0.78 # 0.78 -> 45 deg
         self.grad_phi = np.array([])
         
-        self.bound_theta = 0.7
+        self.bound_theta = 0.78 # 0.78 -> 45 deg
         self.grad_theta = np.array([])
         self.tmp=1
+        
+        self.dist_wind =2.5
+        self.offset = 0.1
+        
+        self.position_w_y = 2.0
+        self.size_y =1.0
+        
+        self.position_w_z = 2.0
+        self.size_z =1.0
         
     def add_running_cost(self, c, weight=1):
         self.running_costs += [(weight,c)]
@@ -169,7 +178,8 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,constraints=({'type':'ineq','fun': self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta}))
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,
+                     constraints=({'type':'ineq','fun': self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta},{'type':'ineq','fun': self.ywindows},{'type':'ineq','fun': self.zwindows}))
         return r
     
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
@@ -220,7 +230,7 @@ class SingleShootingProblem:
         #runnugn cost w g
         cons = np.array([])
         #grad = np.zeros(self.N*self.nu)
-        #grad = np.array([])
+        grad = np.array([])
         #dictionary = {'type': 'ineq', 'fun': fun_c :  }
         #vocal
         
@@ -228,11 +238,11 @@ class SingleShootingProblem:
             ci =  self.bound_phi - np.absolute(X[i,3])
             ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
             dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
-            cons = np.append(cons,ci) 
+            cons = np.append(cons,ci)
+ 
             #self.tmp += 1
             #print(self.tmp)
-            #grad += dci
-            
+            ## grad = np.append(grad,dci)
         #self.tmp += 1
         #print(grad)    
         #self.grad_phi = grad
@@ -284,10 +294,64 @@ class SingleShootingProblem:
             grad = np.append(grad,dci)
             
         self.grad_phi = grad
-        return grad
+        return (0.0,0.0,0.0,1.0)
     
+    def ywindows(self,y):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        #runnugn cost w g
+        cons = np.array([])
+        #grad = np.zeros(self.N*self.nu)
+        grad = np.array([])
+        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
+        #vocal
         
+        for i in range(U.shape[0]):
+            if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
+                cry = -np.absolute(X[i,1] - self.position_w_y) + self.size_y/2
+                #cly = -X[i,1] + self.lehs_win
+                cons = np.append(cons,cry)
+                #cons = np.append(cons,cly)
+                #cons = np.append(cons,cuz)
+                #cons = np.append(cons,clz)
+                #cons = np.append(cons,[cry,cly,cuz,clz])
+            
+        #grad = (0.1,0.0,0.0,0.0)
+        return cons
+    
+    def zwindows(self,y):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        #runnugn cost w g
+        cons = np.array([])
+        #grad = np.zeros(self.N*self.nu)
+        grad = np.array([])
+        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
+        #vocal
+        
+        for i in range(U.shape[0]):
+            if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
+                cuz = -np.absolute(X[i,2] - self.position_w_z) + self.size_z/2
+                #clz = -X[i,2] + self.lohs_win
+                cons = np.append(cons,cuz)
+                #cons = np.append(cons,clz)
+        #grad = (0.1,0.0,0.0,0.0)
+        return cons
+    
+    def compute_dyn_cons(self,y):
+        pass
+        return 0
 
+
+
+
+        
 if __name__=='__main__':
     import plot_utils as plut
     import matplotlib.pyplot as plt
