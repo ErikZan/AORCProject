@@ -17,7 +17,7 @@ from quadcopter_parameter import get_quad_data
 import pandas as pd 
 import matplotlib as matplot
 import plot_utils as plut
-
+import os
 class Empty:
     def __init__(self):
         pass
@@ -53,14 +53,14 @@ class SingleShootingProblem:
         self.grad_theta = np.array([])
         self.tmp=1
         
-        self.dist_wind =2.5
-        self.offset = 0.1
+        self.dist_wind =3.0
+        self.offset = 0.0
         
-        self.position_w_y = 2.0
-        self.size_y =1.0
+        self.position_w_y = 0.0
+        self.size_y =0.5
         
-        self.position_w_z = 2.0
-        self.size_z =1.0
+        self.position_w_z = 2.5
+        self.size_z =0.5
         
     def add_running_cost(self, c, weight=1):
         self.running_costs += [(weight,c)]
@@ -175,11 +175,15 @@ class SingleShootingProblem:
         print('Start optimizing')
         if(use_finite_difference):
             r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, # 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented 
+                     callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,
-                     constraints=({'type':'ineq','fun': self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta},{'type':'ineq','fun': self.ywindows},{'type':'ineq','fun': self.zwindows}))
+                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
+                     constraints=({'type':'ineq','fun': self.fun_cons_phi},
+                                  {'type':'ineq','fun': self.fun_cons_theta},
+                                  {'type':'ineq','fun': self.ywindows},
+                                  {'type':'ineq','fun': self.zwindows} #  metterlo "funziona" nel 
+                                  ))
         return r
     
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
@@ -218,6 +222,7 @@ class SingleShootingProblem:
         self.iter += 1
        
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
+        os.system('cd /home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory && gnuplot -e "filename="file{}.csv"" -p plot.gp'.format(self.iter-1))
         #file = True
         return file
     
@@ -302,24 +307,13 @@ class SingleShootingProblem:
         X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
-        #runnugn cost w g
         cons = np.array([])
-        #grad = np.zeros(self.N*self.nu)
         grad = np.array([])
-        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
-        #vocal
         
         for i in range(U.shape[0]):
             if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
                 cry = -np.absolute(X[i,1] - self.position_w_y) + self.size_y/2
-                #cly = -X[i,1] + self.lehs_win
                 cons = np.append(cons,cry)
-                #cons = np.append(cons,cly)
-                #cons = np.append(cons,cuz)
-                #cons = np.append(cons,clz)
-                #cons = np.append(cons,[cry,cly,cuz,clz])
-            
-        #grad = (0.1,0.0,0.0,0.0)
         return cons
     
     def zwindows(self,y):
@@ -328,24 +322,28 @@ class SingleShootingProblem:
         X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
-        #runnugn cost w g
         cons = np.array([])
-        #grad = np.zeros(self.N*self.nu)
         grad = np.array([])
-        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
-        #vocal
-        
+        grad1 = np.array([1.0,0.0,0.0,0.0])
         for i in range(U.shape[0]):
             if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
                 cuz = -np.absolute(X[i,2] - self.position_w_z) + self.size_z/2
-                #clz = -X[i,2] + self.lohs_win
                 cons = np.append(cons,cuz)
-                #cons = np.append(cons,clz)
-        #grad = (0.1,0.0,0.0,0.0)
+                grad = np.append(grad,grad1)
+                
         return cons
     
+    def z_jac(self,y):
+        grad1 = np.array([1.0,0.0,0.0,0.0])
+        return grad1
+    
     def compute_dyn_cons(self,y):
-        pass
+        if y < 0:
+            U = y.reshape((self.N, self.nu))
+            t0 = 0.0
+            X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
         return 0
 
 
@@ -362,8 +360,8 @@ if __name__=='__main__':
     
     # delete previous csv 
     
-    #os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
-    #os.system('./stored_trajectory/delete_csv.sh')
+    os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
+    os.system('./stored_trajectory/delete_csv.sh')
    
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
     
@@ -401,7 +399,7 @@ if __name__=='__main__':
     #print('bounds:', bnds)
     
     # bounds on X state value, implemented as constraints ?
-    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 } sisi aspe guarda una cosa
+    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 } 
     cons2 = {'type': 'ineq', 'fun': -compute_cost_w_gradient_fd.X[3] -0.1 }
     
     all_cons = [cons1,cons2] # 
@@ -446,4 +444,12 @@ if __name__=='__main__':
     ax.legend()
     matplot.pyplot.xlabel('Time [s]')
     
+    
+    f, ax = plut.create_empty_figure(1)
+    time = np.arange(0.0, T+dt, dt)
+    time = time[:N]
+    ax.plot(problem.X[:N,0], problem.X[:N,1], label ='path y')
+    ax.plot(problem.X[:N,0], problem.X[:N,2], label ='path z')
+    ax.legend()
+    matplot.pyplot.xlabel('X-coord [m]')
     plt.show() 

@@ -1,7 +1,7 @@
 ground := Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], attributes =
 [protected, protected, ground]);
-omegaMV := table([(obj)=VECTOR,(frame)=(Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,
-1,0],[0,0,0,1]], attributes = [protected, protected, ground])),(comps)=(Matrix(\
+omegaMV := table([(frame)=(Matrix(4, 4, [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1
+]], attributes = [protected, protected, ground])),(obj)=VECTOR,(comps)=(Matrix(\
 4, 1, [[0],[0],[0],[0]]))]);
 draw_link := proc (P1::POINT, P2::POINT, data, sol, wb := .17e-1, {col := 
 "SkyBlue"}, $) local tmp1, tmp2; tmp1 := simplify(subs(sol,data,[
@@ -15,6 +15,9 @@ MBSymba_r6_foundations:-`*`(R,1.5),data,sol,col = "LightSalmon"), draw_sphere(
 OmF,r = R,data,sol), draw_sphere(OmB,r = R,data,sol), draw_sphere(OmL,r = R,
 data,sol), draw_sphere(OmR,r = R,data,sol), draw_link(OmF,OmB,data,sol,col = 
 "Blue"), draw_link(OmL,OmR,data,sol,col = "Blue"); end proc;
+draw_window := proc (p1, p2, p3, p4, data, sol) draw_link(p1,p2,data,sol); 
+draw_link(p2,p3,data,sol); draw_link(p3,p4,data,sol); draw_link(p1,p4,data,sol)
+; end proc;
 fname := "Functions.mpl";
 mframe_flag := false;
 transform_obj := proc (RF::frame, obj::function, col::string := "", transp::

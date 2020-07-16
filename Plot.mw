@@ -153,6 +153,27 @@ draw_sphere := proc(P::POINT,data,sol,{r:=0.01,col:=&quot;Goldenrod&quot;},$)
 end proc:</Text-field>
 </Input>
 </Group>
+<Group labelreference="L9" drawlabel="true" applyint="true" applyrational="true" applyexponent="false">
+<Input><Text-field prompt="&gt; " style="Maple Input" layout="Normal">draw_window := proc(p1,p2,p3,p4,data,sol)
+
+   draw_link(p1,p2,data,sol):
+   draw_link(p2,p3,data,sol):
+   draw_link(p3,p4,data,sol):
+   draw_link(p1,p4,data,sol):
+end proc:</Text-field>
+</Input>
+</Group>
+<Group labelreference="L8" drawlabel="true" applyint="true" applyrational="true" applyexponent="false">
+<Input><Text-field prompt="&gt; " style="Maple Input" layout="Normal">
+draw_sphere := proc(P::POINT,data,sol,{r:=0.01,col:=&quot;Goldenrod&quot;},$)
+
+   local tmp:
+   tmp := subs(sol,data,[comp_XYZ(P,ground)]):
+   plottools[sphere](tmp,r,color=col):
+
+end proc:</Text-field>
+</Input>
+</Group>
 <Group labelreference="L6" drawlabel="true" applyint="true" applyrational="true" applyexponent="false">
 <Input><Text-field prompt="&gt; " style="Maple Input" layout="Normal">draw_quadcopter:=proc(data,sol,R)
 
