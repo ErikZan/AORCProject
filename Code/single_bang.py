@@ -169,7 +169,7 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 200, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,constraints=({'type':'ineq','fun': self.fun_cons_phi,'jac':self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta}))
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,constraints=({'type':'ineq','fun': self.fun_cons_phi},{'type':'ineq','fun': self.fun_cons_theta}))
         return r
     
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
@@ -206,7 +206,9 @@ class SingleShootingProblem:
     def clbk(self, xk):
         print('Iter %3d, cost %5f'%(self.iter, self.last_cost))
         self.iter += 1
+       
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
+        #file = True
         return file
     
     def fun_cons_phi(self, y ):
@@ -215,44 +217,26 @@ class SingleShootingProblem:
         X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
-        nx = 12
-        nu = 4
         #runnugn cost w g
         cons = np.array([])
         #grad = np.zeros(self.N*self.nu)
-        grad = np.zeros(120)
+        #grad = np.array([])
         #dictionary = {'type': 'ineq', 'fun': fun_c :  }
         #vocal
-        """ 
+        
         for i in range(U.shape[0]):
             ci =  self.bound_phi - np.absolute(X[i,3])
             ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
             dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
-            cons = np.append(cons,ci_x) 
+            cons = np.append(cons,ci) 
             #self.tmp += 1
             #print(self.tmp)
             #grad += dci
-            if i<1:
-                grad = dci
-            else :
-                grad = np.append(grad,dci)
-                 """
-        for i in range(U.shape[0]):
-            for (w,c) in self.running_costs:
-                a, b, c = c.compute_w_gradient(X[i,:], U[i,:], t0, recompute=True)
-                ci = self.bound_phi - np.absolute(X[i,3])
-                ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
-                ci_u = U[i]
-                dci = ci_x.dot(dXdU[i*nx:(i+1)*nx,:]) 
-                dci[i*nu:(i+1)*nu] += ci_u
-                
-                cons = np.append(cons,ci_x)
-                grad += dci
-                t0 += self.dt
+            
         #self.tmp += 1
         #print(grad)    
-        self.grad_phi = grad
-        return (cons,grad)
+        #self.grad_phi = grad
+        return cons
     
     def fun_cons_theta(self, y ):
         U = y.reshape((self.N, self.nu))
@@ -271,7 +255,7 @@ class SingleShootingProblem:
             ci =  self.bound_theta - np.absolute(X[i,4])
             ci_x= np.array([0.0,0.0,0.0,0.0,ci*np.sign(X[i,4]),0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
             dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
-            cons = np.append(cons,ci_x)
+            cons = np.append(cons,ci)
             #grad += dci
             grad = np.append(grad,dci)
         
@@ -305,7 +289,7 @@ class SingleShootingProblem:
         
 
 if __name__=='__main__':
-    import arc.utils.plot_utils as plut
+    import plot_utils as plut
     import matplotlib.pyplot as plt
     import time
     from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl
@@ -347,8 +331,8 @@ if __name__=='__main__':
      
     """    
     # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
-    a = (None,None) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
-    b = (0.0,None) # de ve essere superiore a zero
+    a = (-.5,.5) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
+    b = (0.0,20.0) # de ve essere superiore a zero
     bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
     
@@ -360,7 +344,7 @@ if __name__=='__main__':
     """
     # function that use bounds
     
-    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN // trust-ncg
+    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)                                       
     
