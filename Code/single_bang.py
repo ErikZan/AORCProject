@@ -215,27 +215,42 @@ class SingleShootingProblem:
         X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
+        nx = 12
+        nu = 4
         #runnugn cost w g
         cons = np.array([])
         #grad = np.zeros(self.N*self.nu)
-        #grad = np.array([])
+        grad = np.zeros(120)
         #dictionary = {'type': 'ineq', 'fun': fun_c :  }
         #vocal
-        
+        """ 
         for i in range(U.shape[0]):
             ci =  self.bound_phi - np.absolute(X[i,3])
             ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
             dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
             cons = np.append(cons,ci_x) 
-            self.tmp += 1
-            print(self.tmp)
+            #self.tmp += 1
+            #print(self.tmp)
             #grad += dci
             if i<1:
                 grad = dci
             else :
                 grad = np.append(grad,dci)
+                 """
+        for i in range(U.shape[0]):
+            for (w,c) in self.running_costs:
+                a, b, c = c.compute_w_gradient(X[i,:], U[i,:], t0, recompute=True)
+                ci = self.bound_phi - np.absolute(X[i,3])
+                ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+                ci_u = U[i]
+                dci = ci_x.dot(dXdU[i*nx:(i+1)*nx,:]) 
+                dci[i*nu:(i+1)*nu] += ci_u
+                
+                cons = np.append(cons,ci_x)
+                grad += dci
+                t0 += self.dt
         #self.tmp += 1
-        print(grad)    
+        #print(grad)    
         self.grad_phi = grad
         return (cons,grad)
     
@@ -345,7 +360,7 @@ if __name__=='__main__':
     """
     # function that use bounds
     
-    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
+    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN // trust-ncg
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)                                       
     
