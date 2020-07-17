@@ -53,14 +53,14 @@ class SingleShootingProblem:
         self.grad_theta = np.array([])
         self.tmp=1
         
-        self.dist_wind =3.0
-        self.offset = 0.0
+        self.dist_wind =2.0
+        self.offset = 0.1
         
         self.position_w_y = 0.0
-        self.size_y =0.5
+        self.size_y =1
         
-        self.position_w_z = 2.5
-        self.size_z =0.5
+        self.position_w_z = 4.0
+        self.size_z =1.0
         
     def add_running_cost(self, c, weight=1):
         self.running_costs += [(weight,c)]
@@ -178,11 +178,12 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
-                     constraints=({'type':'ineq','fun': self.fun_cons_phi},
+                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,
+                     constraints=(
+                         {'type':'ineq','fun': self.fun_cons_phi},
                                   {'type':'ineq','fun': self.fun_cons_theta},
-                                  {'type':'ineq','fun': self.ywindows},
-                                  {'type':'ineq','fun': self.zwindows} #  metterlo "funziona" nel 
+                                  #{'type':'ineq','fun': self.z_cons_line_up},
+                                  {'type':'ineq','fun': self.z_cons_line}  #np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
                                   ))
         return r
     
@@ -222,7 +223,10 @@ class SingleShootingProblem:
         self.iter += 1
        
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
-        os.system('cd /home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory && gnuplot -e "filename="file{}.csv"" -p plot.gp'.format(self.iter-1))
+        #with open("stored_trajectory/file{self.iter}.csv") as infile, open('file1.txt', 'w') as outfile:
+        #    outfile.write(infile.read().replace(",", " "))
+        np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
+        #os.system("./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/plot_stuff.sh")
         #file = True
         return file
     
@@ -312,6 +316,7 @@ class SingleShootingProblem:
         
         for i in range(U.shape[0]):
             if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
+            #if X[i,0] > self.dist_wind-self.offset:
                 cry = -np.absolute(X[i,1] - self.position_w_y) + self.size_y/2
                 cons = np.append(cons,cry)
         return cons
@@ -327,6 +332,7 @@ class SingleShootingProblem:
         grad1 = np.array([1.0,0.0,0.0,0.0])
         for i in range(U.shape[0]):
             if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
+            #if X[i,0] > self.dist_wind-self.offset:
                 cuz = -np.absolute(X[i,2] - self.position_w_z) + self.size_z/2
                 cons = np.append(cons,cuz)
                 grad = np.append(grad,grad1)
@@ -335,6 +341,7 @@ class SingleShootingProblem:
     
     def z_jac(self,y):
         grad1 = np.array([1.0,0.0,0.0,0.0])
+        
         return grad1
     
     def compute_dyn_cons(self,y):
@@ -345,8 +352,52 @@ class SingleShootingProblem:
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
         return 0
+    
+    def z_cons_line(self,y):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        
+        mz = ((self.position_w_z-self.size_z/2)-self.x0[2]-20)/(self.dist_wind-self.x0[0])
+        
+        cons = np.array([])
+        grad = np.array([])
+        
+        for i in range(U.shape[0]):
+            if X[i,0] < self.dist_wind:
+                cuz = X[i,2] - mz*X[i,0] + self.x0[2]
+                cons = np.append(cons,cuz)
+            else:
+                #cuz = X[i,2] - mz*X[i,0] + x0[2]
+                #cuz = X[i,2]-(self.position_w_z-self.size_z/2) -100*X[i,0]
+                cuz = 0
+                cons = np.append(cons,cuz)
+                
+        return cons
 
-
+    def z_cons_line_up(self,y):
+        U = y.reshape((self.N, self.nu))
+        t0 = 0.0
+        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+                                                        self.dt, self.N, 
+                                                        self.integration_scheme)
+        
+        mz = ((self.position_w_z+self.size_z/2)-self.x0[2]-20)/(self.dist_wind-self.x0[0])
+        
+        cons = np.array([])
+        grad = np.array([])
+        
+        for i in range(U.shape[0]):
+            if X[i,0] < self.dist_wind:
+                cuz = -X[i,2] + mz*X[i,0] + self.x0[2]
+                cons = np.append(cons,cuz)
+            else:
+                cuz = 0
+                cons = np.append(cons,cuz)
+                
+        return cons
 
 
         
@@ -393,7 +444,7 @@ if __name__=='__main__':
      
     """    
     # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
-    a = (-.5,.5) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
+    a = (-0.5,0.5) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
     b = (0.0,20.0) # de ve essere superiore a zero
     bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
