@@ -45,13 +45,16 @@ class SingleShootingProblem:
         self.last_cost = 0.0
         self.running_costs = []
         self.final_costs = []
-        
+       #Constraints -------------------------------------------------------------------- 
+        self.U_cons = np.zeros((N, 6))
+        self.X_cons = np.zeros((N, self.x0.shape[0]))
+        self.dXdU_cons = np.array([])
+
         self.bound_phi = 0.78 # 0.78 -> 45 deg
         self.grad_phi = np.array([])
-        
+
         self.bound_theta = 0.78 # 0.78 -> 45 deg
         self.grad_theta = np.array([])
-        self.tmp=1
         
         self.dist_wind =2.0
         self.offset = 0.1
@@ -61,6 +64,9 @@ class SingleShootingProblem:
         
         self.position_w_z = 4.0
         self.size_z =1.0
+        self.grad_line_dwn = np.array([])
+
+
         
     def add_running_cost(self, c, weight=1):
         self.running_costs += [(weight,c)]
@@ -178,12 +184,12 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 200, 'disp': True },bounds=bnds,
+                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
                      constraints=(
                          {'type':'ineq','fun': self.fun_cons_phi},
                                   {'type':'ineq','fun': self.fun_cons_theta},
-                                  #{'type':'ineq','fun': self.z_cons_line_up},
-                                  {'type':'ineq','fun': self.z_cons_line}  #np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
+                                #  {'type':'ineq','fun': self.cons_line_up},
+                                  {'type':'ineq','fun': self.cons_line_dwn}  #np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
                                   ))
         return r
     
@@ -222,88 +228,67 @@ class SingleShootingProblem:
         print('Iter %3d, cost %5f'%(self.iter, self.last_cost))
         self.iter += 1
        
-        file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
+        #file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
         #with open("stored_trajectory/file{self.iter}.csv") as infile, open('file1.txt', 'w') as outfile:
         #    outfile.write(infile.read().replace(",", " "))
-        np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
+        #np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
         #os.system("./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/plot_stuff.sh")
-        #file = True
+        file = True
         return file
-    
+
+   #Bounds on phi ----------------
     def fun_cons_phi(self, y ):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
-        #runnugn cost w g
+
+        self.compute_dyn_cons(y) 
+        X = self.X_cons
+        U = self.U_cons
+        dXdU =self.dXdU_cons                                              
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N
+
         cons = np.array([])
-        #grad = np.zeros(self.N*self.nu)
-        grad = np.array([])
-        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
-        #vocal
+        grad = np.zeros(self.N*self.nu)
         
         for i in range(U.shape[0]):
+
             ci =  self.bound_phi - np.absolute(X[i,3])
-            ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
-            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            grad += np.array([0.0,0.0,0.0,-1.0*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
             cons = np.append(cons,ci)
- 
-            #self.tmp += 1
-            #print(self.tmp)
-            ## grad = np.append(grad,dci)
-        #self.tmp += 1
-        #print(grad)    
-        #self.grad_phi = grad
+        self.grad_phi = grad
         return cons
-    
+
+    def jac_cons_phi(self,y):
+
+        return self.grad_phi
+
+
+    #Bounds on theta ----------------
     def fun_cons_theta(self, y ):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
-        #runnugn cost w g
-        cons = np.array([])
-        #grad = np.zeros(self.N*self.nu)
-        grad = np.array([])
-        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
-        #vocal
         
+        self.compute_dyn_cons(y) 
+        X = self.X_cons
+        U = self.U_cons
+        dXdU =self.dXdU_cons  
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N                                            
+    
+        cons = np.array([])
+        grad = np.zeros(self.N*self.nu)
+
         for i in range(U.shape[0]):
             ci =  self.bound_theta - np.absolute(X[i,4])
-            ci_x= np.array([0.0,0.0,0.0,0.0,ci*np.sign(X[i,4]),0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
-            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
+            grad += np.array([0.0,0.0,0.0,0.0,-1.0*np.sign(X[i,4]),0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
             cons = np.append(cons,ci)
-            #grad += dci
-            grad = np.append(grad,dci)
-        
         self.grad_theta = grad
         return cons
-    
-    def jac_phi(self,y):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
-        #runnugn cost w g
-        cons = np.array([])
-        #grad = np.zeros(self.N*self.nu)
-        grad = np.array([])
-        #dictionary = {'type': 'ineq', 'fun': fun_c :  }
-        #vocal
-        
-        for i in range(U.shape[0]):
-            ci =  self.bound_phi - np.absolute(X[i,3])
-            ci_x= np.array([0.0,0.0,0.0,ci*np.sign(X[i,3]),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # sign ?
-            dci = ci_x.dot(dXdU[i*12:(i+1)*12,:]) 
-            cons = np.append(cons,ci_x)
-            #grad += dci
-            grad = np.append(grad,dci)
-            
-        self.grad_phi = grad
-        return (0.0,0.0,0.0,1.0)
+
+    def jac_cons_theta(self,y):
+
+        return self.grad_theta
     
     def ywindows(self,y):
         U = y.reshape((self.N, self.nu))
@@ -339,50 +324,56 @@ class SingleShootingProblem:
                 
         return cons
     
-    def z_jac(self,y):
-        grad1 = np.array([1.0,0.0,0.0,0.0])
-        
-        return grad1
-    
     def compute_dyn_cons(self,y):
-        if y < 0:
-            U = y.reshape((self.N, self.nu))
+        if np.array_equal(y,self.U_cons):
+
+            return False
+        else:
+            self.U_cons = y.reshape((self.N, self.nu))
             t0 = 0.0
-            X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
+            self.X_cons, self.dXdU_cons = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, self.U_cons, t0, 
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
         return 0
-    
-    def z_cons_line(self,y):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
+     
+    def cons_line_dwn(self,y):
         
-        mz = ((self.position_w_z-self.size_z/2)-self.x0[2]-20)/(self.dist_wind-self.x0[0])
+        self.compute_dyn_cons(y)
+        X = self.X_cons
+        U = self.U_cons
+        dXdU = self.dXdU_cons 
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N
+
+        mz = ((self.position_w_z-self.size_z/2)-(self.x0[2]-10))/(self.dist_wind-self.x0[0])
         
         cons = np.array([])
-        grad = np.array([])
+        grad = np.zeros(self.N*self.nu)
         
         for i in range(U.shape[0]):
             if X[i,0] < self.dist_wind:
-                cuz = X[i,2] - mz*X[i,0] + self.x0[2]
+                cuz = X[i,2] - (mz*X[i,0] + self.x0[2]-10)
                 cons = np.append(cons,cuz)
+                grad += np.array([mz,0,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
             else:
-                #cuz = X[i,2] - mz*X[i,0] + x0[2]
-                #cuz = X[i,2]-(self.position_w_z-self.size_z/2) -100*X[i,0]
+                #cuz = X[i,2] - (mz*X[i,0] + x0[2])
+                #cuz = X[i,2]-((self.position_w_z-self.size_z/2) -100*(X[i,0])-self.dist_wind)
                 cuz = 0
                 cons = np.append(cons,cuz)
-                
+                grad += np.array([-100,0,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
+        self.grad_line_dwn = grad  
         return cons
+    def jac_cons_line_dwn(self,y):
+
+        return self.grad_line_dwn
 
     def z_cons_line_up(self,y):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
+         
+        self.compute_dyn_cons(y)
+        X = self.X_cons
+        U = self.U_cons
         
         mz = ((self.position_w_z+self.size_z/2)-self.x0[2]-20)/(self.dist_wind-self.x0[0])
         
@@ -411,8 +402,8 @@ if __name__=='__main__':
     
     # delete previous csv 
     
-    os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
-    os.system('./stored_trajectory/delete_csv.sh')
+   # os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
+   # os.system('./stored_trajectory/delete_csv.sh')
    
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
     
@@ -444,8 +435,8 @@ if __name__=='__main__':
      
     """    
     # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
-    a = (-0.5,0.5) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
-    b = (0.0,20.0) # de ve essere superiore a zero
+    a = (-0.05,0.05) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
+    b = (0.0,30.0) # de ve essere superiore a zero
     bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
     

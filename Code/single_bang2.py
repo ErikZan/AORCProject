@@ -388,7 +388,7 @@ if __name__=='__main__':
      
     """    
     # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
-    a = (-.5,.5) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
+    a = (-.05,.05) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
     b = (0.0,20.0) # de ve essere superiore a zero
     bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
