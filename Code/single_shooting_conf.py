@@ -16,24 +16,26 @@ T = 1.5     # 1,5                  # OCP horizon
 dt = 0.1                  # OCP time step
 integration_scheme = 'RK-4'
 use_finite_difference = False
-weight_vel = 0.1          #a=0.5              # cost function weight for final velocity (for position it's implicitely 1)
+weight_vel = 0.0001          #a=0.5              # cost function weight for final velocity (for position it's implicitely 1)
 #weight_u = 1.0                                 # cost function weight for control
 #weight_run_state= 2300000.0 #a=2300000.0        # np.identity(12) # weight matrix for the state
-weight_r= 0.1e-11           #a=0.1e-7           # weight of runnig cost
-q_des = np.array([5.0,0.1,0.1,0.0,0.0,0.0])
+weight_const = 0.001     
+weight_r= 1.0           #a=0.1e-7           # weight of runnig cost
+q_des = np.array([5.0,0.0,0.0,0.0,0.0,0.0])
 v_des = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
-weight_run_state = np.array([[0.00001, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-       [0., 0.01, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-       [0., 0., 0.1, 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+weight_run_state = np.array([
+        [0.0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0.0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0.0, 0., 0., 0., 0., 0., 0., 0., 0., 0.],
        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # posizione di phi
        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # posizione di theta
        [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
-       [0., 0., 0., 0., 0., 0., 0.001, 0., 0., 0., 0., 0.],
-       [0., 0., 0., 0., 0., 0., 0., 0.001, 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0.0, 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0.0, 0., 0., 0., 0.],
        [0., 0., 0., 0., 0., 0., 0., 0., 0.0, 0., 0., 0.],
        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.0, 0., 0.],
        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,0.0 , 0.],
-       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.0]]) *1e13
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.0]]) *1e-90
         # 
 
 # a=choose 80   at phi theta psi for a smooth run, all * 2300000.0

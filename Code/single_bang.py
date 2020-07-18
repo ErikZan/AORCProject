@@ -50,19 +50,19 @@ class SingleShootingProblem:
         self.X_cons = np.zeros((N, self.x0.shape[0]))
         self.dXdU_cons = np.array([])
 
-        self.bound_phi = 0.78 # 0.78 -> 45 deg
+        self.bound_phi = 1.05 # 0.78 -> 45 deg
         self.grad_phi = np.array([])
 
-        self.bound_theta = 0.78 # 0.78 -> 45 deg
+        self.bound_theta = 1.05 # 0.78 -> 45 deg
         self.grad_theta = np.array([])
         
         self.dist_wind =2.0
         self.offset = 0.1
         
         self.position_w_y = 0.0
-        self.size_y =1
+        self.size_y =1.0
         
-        self.position_w_z = 4.0
+        self.position_w_z = 3.0
         self.size_z =1.0
         self.grad_line_dwn = np.array([])
 
@@ -73,6 +73,7 @@ class SingleShootingProblem:
     
     def add_final_cost(self, c, weight=1):
         self.final_costs += [(weight,c)]
+        
         
     def running_cost(self, X, U):
         ''' Compute the running cost integral '''
@@ -130,8 +131,8 @@ class SingleShootingProblem:
         # compute cost
         run_cost = self.running_cost(X, U)
         fin_cost = self.final_cost(X[-1,:])
+       
         cost = run_cost + fin_cost
-        
         # store X, U and cost
         self.X, self.U = X, U
         self.last_cost = cost        
@@ -162,8 +163,9 @@ class SingleShootingProblem:
         # compute cost
         (run_cost, grad_run) = self.running_cost_w_gradient(X, U, dXdU)
         (fin_cost, grad_fin) = self.final_cost_w_gradient(X[-1,:], dXdU[-self.nx:,:])
-        cost = run_cost + fin_cost
-        grad = grad_run + grad_fin
+       
+        cost = run_cost + fin_cost 
+        grad = grad_run + grad_fin 
         
         # store X, U and cost
         self.X, self.U = X, U
@@ -184,12 +186,13 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
+                     callback=self.clbk, options={'maxiter': 120, 'disp': True },bounds=bnds,
                      constraints=(
-                         {'type':'ineq','fun': self.fun_cons_phi},
+                         {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_phi
                                   {'type':'ineq','fun': self.fun_cons_theta},
-                                #  {'type':'ineq','fun': self.cons_line_up},
-                                  {'type':'ineq','fun': self.cons_line_dwn}  #np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
+                                   {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_theta
+                                   #{'type':'ineq','fun': self.cons_line_up},
+                                   {'type':'ineq','fun': self.cons_line_dwn}  #  ,'jac':self.jac_cons_line_dwn                  np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
                                   ))
         return r
     
@@ -228,12 +231,10 @@ class SingleShootingProblem:
         print('Iter %3d, cost %5f'%(self.iter, self.last_cost))
         self.iter += 1
        
-        #file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
-        #with open("stored_trajectory/file{self.iter}.csv") as infile, open('file1.txt', 'w') as outfile:
-        #    outfile.write(infile.read().replace(",", " "))
-        #np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
+        file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
+        np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
         #os.system("./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/plot_stuff.sh")
-        file = True
+        #file = True
         return file
 
    #Bounds on phi ----------------
@@ -286,6 +287,27 @@ class SingleShootingProblem:
         self.grad_theta = grad
         return cons
 
+    def fun_cons_psi(self, y ):
+        
+        self.compute_dyn_cons(y) 
+        X = self.X_cons
+        U = self.U_cons
+        dXdU =self.dXdU_cons  
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N                                            
+    
+        cons = np.array([])
+        grad = np.zeros(self.N*self.nu)
+
+        for i in range(U.shape[0]):
+            ci =  self.bound_theta - np.absolute(X[i,5])
+            grad += np.array([0.0,0.0,0.0,0.0,0.0,-1.0*np.sign(X[i,5]),0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
+            cons = np.append(cons,ci)
+        self.grad_theta = grad
+        return cons
+    
     def jac_cons_theta(self,y):
 
         return self.grad_theta
@@ -347,22 +369,22 @@ class SingleShootingProblem:
         nu = self.nu
         N = self.N
 
-        mz = ((self.position_w_z-self.size_z/2)-(self.x0[2]-10))/(self.dist_wind-self.x0[0])
+        mz = ((self.position_w_z-self.size_z/2.0)-(self.x0[2]-2.0))/(self.dist_wind-self.x0[0])
         
         cons = np.array([])
         grad = np.zeros(self.N*self.nu)
         
         for i in range(U.shape[0]):
             if X[i,0] < self.dist_wind:
-                cuz = X[i,2] - (mz*X[i,0] + self.x0[2]-10)
+                cuz = X[i,2] - (mz*X[i,0] + self.x0[2]-2.0)
                 cons = np.append(cons,cuz)
-                grad += np.array([mz,0,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
+                grad += np.array([-mz,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
             else:
                 #cuz = X[i,2] - (mz*X[i,0] + x0[2])
                 #cuz = X[i,2]-((self.position_w_z-self.size_z/2) -100*(X[i,0])-self.dist_wind)
                 cuz = 0
                 cons = np.append(cons,cuz)
-                grad += np.array([-100,0,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
+                grad += np.array([-100.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
         self.grad_line_dwn = grad  
         return cons
     def jac_cons_line_dwn(self,y):
@@ -390,19 +412,38 @@ class SingleShootingProblem:
                 
         return cons
 
+    '''     def cost_on_cons(self,X):
+        cost = 0.0
+        grad = np.zeros(self.N*self.nu)
+        t = 0.0
+        line = self.create_line(X)
+        w = 1.0
+        nu =4
+        nx=12
+        for i in range(X.shape[0]):
+            ci, ci_x, ci_u = c.compute_cost_constraint(line[i])
+            dci = ci_x.dot(self.dXdU_cons[i*nx:(i+1)*nx,:]) 
+            dci[i*nu:(i+1)*nu] += ci_u
+                
+            cost += w * self.dt * ci
+            grad += w * self.dt * dci
+            t += self.dt
+        return (cost, grad)
+     '''
+   
 
         
 if __name__=='__main__':
     import plot_utils as plut
     import matplotlib.pyplot as plt
     import time
-    from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl
+    from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl , OCPRunningConstraint
     import single_shooting_conf as conf
     import os
-    
+    import numpy as np
     # delete previous csv 
     
-   # os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
+    os.system('./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/delete_csv.sh')
    # os.system('./stored_trajectory/delete_csv.sh')
    
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
@@ -411,6 +452,7 @@ if __name__=='__main__':
     T = conf.T
     N = int(T/dt)        # horizon size
     PLOT_STUFF = 1
+    thrust_guess = np.tile(np.array([4.6,0.0,0.0,0.0]),(N))
     linestyles = ['-*', '--*', ':*', '-.*']
     ode = ode('ode',get_quad_data('Quad1'),conf.dt)
     # create OCP
@@ -422,7 +464,10 @@ if __name__=='__main__':
     final_cost_state = OCPFinalCostState( conf.q_des, conf.v_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
     effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state) # effort cost modificato
-    problem.add_running_cost(effort_cost, conf.weight_r)    
+    problem.add_running_cost(effort_cost, conf.weight_r) 
+    
+    #constraint = OCPRunningConstraint(dt,conf.weight_const,conf.x0,problem.position_w_z,problem.size_z,problem.dist_wind,N) # da cambiare
+    #problem.add_running_cost(constraint,conf.weight_r)   
 #    problem.sanity_check_cost_gradient()
    
     """
@@ -436,7 +481,7 @@ if __name__=='__main__':
     """    
     # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
     a = (-0.05,0.05) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
-    b = (0.0,30.0) # de ve essere superiore a zero
+    b = (0.0,10.0) # de ve essere superiore a zero
     bnds = (b,a,a,a)*N
     #print('bounds:', bnds)
     
@@ -448,7 +493,7 @@ if __name__=='__main__':
     """
     # function that use bounds
     
-    problem.solve_bounds(method='slsqp',use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
+    problem.solve_bounds(method='slsqp',y0=thrust_guess,use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)                                       
     
@@ -458,7 +503,13 @@ if __name__=='__main__':
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
     pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
     
+    mz = ((problem.position_w_z-problem.size_z/2)-(problem.X[2]-5.0))/(problem.dist_wind-problem.x0[0])
     
+    Y=np.zeros(1)
+    for i in range(N):
+        Y=np.append(Y,[mz*problem.X[i,0] + problem.x0[2]-5.0])
+
+    print(Y)
     # all in one plot
     
     f, ax = plut.create_empty_figure(1)
@@ -492,6 +543,7 @@ if __name__=='__main__':
     time = time[:N]
     ax.plot(problem.X[:N,0], problem.X[:N,1], label ='path y')
     ax.plot(problem.X[:N,0], problem.X[:N,2], label ='path z')
+    #ax.plot(problem.X[:N,0], Y[:N], label ='cons')
     ax.legend()
     matplot.pyplot.xlabel('X-coord [m]')
     plt.show() 
