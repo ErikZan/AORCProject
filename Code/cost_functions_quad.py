@@ -43,25 +43,25 @@ class OCPFinalCostState:
         grad =  np.concatenate((e, self.weight_vel*de))
         return (cost, grad)
         
-class OCPFinalCostState:
+class OCPFinalCostLength:
     ''' Cost function for reaching a desired state of the robot
     '''
-    def __init__(self, q_des, v_des, weight_vel):
+    def __init__(self, q_des, v_des, weight_vel,dt,N):
         
         self.nq = 6
         self.q_des = q_des   # desired joint angles
-        self.v_des = v_des  # desired joint velocities
         self.weight_vel = weight_vel
-        
+        self.dt = dt
+        self.N = N
         
     def compute_w_gradient(self, x, recompute=True):
         ''' Compute the cost and its gradient given the final state x '''
-        q = x[:self.nq]
-        v = x[self.nq:]
-        e = q-self.q_des
-        de = v - self.v_des
-        cost = 0.5*e.dot(e) + 0.5*self.weight_vel*de.dot(de) # 200 messo dopo un po a caso 
-        grad =  np.concatenate((e, self.weight_vel*de))
+        traj=0.0
+        for i in range(self.N-1):
+            traj = math.sqrt(x[i+1,0]**2+x[i+1,1]**2+x[i+1,2]**2 ) - math.sqrt(x[i,0]**2+x[i,1]**2+x[i,2]**2 ) 
+            traj += traj
+            cost = 0.5*traj.dot(traj) # 200 messo dopo un po a caso 
+            grad =  np.array([0.0,0.0,0.0,self.dt,self.dt,self.dt,0.0,0.0,0.0,0.0,0.0,0.0])
         return (cost, grad)    
 
         

@@ -65,6 +65,9 @@ class SingleShootingProblem:
         self.position_w_z = 3.0
         self.size_z =1.0
         self.grad_line_dwn = np.array([])
+        
+        # Constraint cost 
+        
 
 
         
@@ -186,12 +189,12 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 120, 'disp': True },bounds=bnds,
+                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
                      constraints=(
                          {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_phi
                                   {'type':'ineq','fun': self.fun_cons_theta},
                                    {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_theta
-                                   #{'type':'ineq','fun': self.cons_line_up},
+                                   {'type':'ineq','fun': self.cons_line_up},
                                    {'type':'ineq','fun': self.cons_line_dwn}  #  ,'jac':self.jac_cons_line_dwn                  np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
                                   ))
         return r
@@ -369,14 +372,14 @@ class SingleShootingProblem:
         nu = self.nu
         N = self.N
 
-        mz = ((self.position_w_z-self.size_z/2.0)-(self.x0[2]-2.0))/(self.dist_wind-self.x0[0])
+        mz = ((self.position_w_z-self.size_z/2.0)-(self.x0[2]-5.0))/(self.dist_wind-self.x0[0])
         
         cons = np.array([])
         grad = np.zeros(self.N*self.nu)
         
         for i in range(U.shape[0]):
             if X[i,0] < self.dist_wind:
-                cuz = X[i,2] - (mz*X[i,0] + self.x0[2]-2.0)
+                cuz = X[i,2] - (mz*X[i,0] + self.x0[2]-5.0) # prova ad aggiungere un uno
                 cons = np.append(cons,cuz)
                 grad += np.array([-mz,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
             else:
@@ -391,20 +394,20 @@ class SingleShootingProblem:
 
         return self.grad_line_dwn
 
-    def z_cons_line_up(self,y):
+    def cons_line_up(self,y):
          
         self.compute_dyn_cons(y)
         X = self.X_cons
         U = self.U_cons
         
-        mz = ((self.position_w_z+self.size_z/2)-self.x0[2]-20)/(self.dist_wind-self.x0[0])
+        mz = ((self.position_w_z+self.size_z/2)-(self.x0[2]+5.0))/(self.dist_wind-self.x0[0])
         
         cons = np.array([])
         grad = np.array([])
         
         for i in range(U.shape[0]):
             if X[i,0] < self.dist_wind:
-                cuz = -X[i,2] + mz*X[i,0] + self.x0[2]
+                cuz = -X[i,2] + mz*X[i,0] + (self.x0[2]+5.0)
                 cons = np.append(cons,cuz)
             else:
                 cuz = 0
@@ -437,7 +440,7 @@ if __name__=='__main__':
     import plot_utils as plut
     import matplotlib.pyplot as plt
     import time
-    from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl , OCPRunningConstraint
+    from cost_functions_quad import OCPFinalCostState, OCPRunningCostQuadraticControl , OCPRunningConstraint , OCPFinalCostLength
     import single_shooting_conf as conf
     import os
     import numpy as np
@@ -466,6 +469,8 @@ if __name__=='__main__':
     effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state) # effort cost modificato
     problem.add_running_cost(effort_cost, conf.weight_r) 
     
+    #traj_cost = OCPFinalCostLength(conf.q_des, conf.v_des, conf.weight_vel,dt,N)
+    #problem.add_final_cost(traj_cost)
     #constraint = OCPRunningConstraint(dt,conf.weight_const,conf.x0,problem.position_w_z,problem.size_z,problem.dist_wind,N) # da cambiare
     #problem.add_running_cost(constraint,conf.weight_r)   
 #    problem.sanity_check_cost_gradient()
