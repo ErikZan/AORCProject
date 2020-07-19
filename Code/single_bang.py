@@ -59,7 +59,7 @@ class SingleShootingProblem:
         self.dist_wind =2.0
         self.offset = 0.1
         
-        self.position_w_y = 0.0
+        self.position_w_y = 2.0
         self.size_y =1.0
         
         self.position_w_z = 3.0
@@ -189,13 +189,15 @@ class SingleShootingProblem:
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds,
+                     callback=self.clbk, options={'maxiter': 250, 'disp': True },bounds=bnds,
                      constraints=(
                          {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_phi
                                   {'type':'ineq','fun': self.fun_cons_theta},
                                    {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_theta
                                    {'type':'ineq','fun': self.cons_line_up},
-                                   {'type':'ineq','fun': self.cons_line_dwn}  #  ,'jac':self.jac_cons_line_dwn                  np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
+                                   {'type':'ineq','fun': self.cons_line_dwn},
+                                   {'type':'ineq','fun': self.cons_line_left},
+                                   {'type':'ineq','fun': self.cons_line_right}  #  ,'jac':self.jac_cons_line_dwn                  np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
                                   ))
         return r
     
@@ -390,6 +392,7 @@ class SingleShootingProblem:
                 grad += np.array([-100.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
         self.grad_line_dwn = grad  
         return cons
+    
     def jac_cons_line_dwn(self,y):
 
         return self.grad_line_dwn
@@ -400,7 +403,7 @@ class SingleShootingProblem:
         X = self.X_cons
         U = self.U_cons
         
-        mz = ((self.position_w_z+self.size_z/2)-(self.x0[2]+5.0))/(self.dist_wind-self.x0[0])
+        mz = ((self.position_w_z+self.size_z/2.0)-(self.x0[2]+5.0))/(self.dist_wind-self.x0[0])
         
         cons = np.array([])
         grad = np.array([])
@@ -414,26 +417,49 @@ class SingleShootingProblem:
                 cons = np.append(cons,cuz)
                 
         return cons
-
-    '''     def cost_on_cons(self,X):
-        cost = 0.0
-        grad = np.zeros(self.N*self.nu)
-        t = 0.0
-        line = self.create_line(X)
-        w = 1.0
-        nu =4
-        nx=12
-        for i in range(X.shape[0]):
-            ci, ci_x, ci_u = c.compute_cost_constraint(line[i])
-            dci = ci_x.dot(self.dXdU_cons[i*nx:(i+1)*nx,:]) 
-            dci[i*nu:(i+1)*nu] += ci_u
+    
+    def cons_line_right(self,y):
+         
+        self.compute_dyn_cons(y)
+        X = self.X_cons
+        U = self.U_cons
+        
+        mz = ((self.position_w_y-self.size_y/2.0)-(self.x0[1]-5.0))/(self.dist_wind-self.x0[0])
+        
+        cons = np.array([])
+        grad = np.array([])
+        
+        for i in range(U.shape[0]):
+            if X[i,0] < self.dist_wind:
+                cuz = +X[i,1] - (mz*X[i,0] + (self.x0[1]-5.0))
+                cons = np.append(cons,cuz)
+            else:
+                cuz = 0
+                cons = np.append(cons,cuz)
                 
-            cost += w * self.dt * ci
-            grad += w * self.dt * dci
-            t += self.dt
-        return (cost, grad)
-     '''
-   
+        return cons
+    
+    def cons_line_left(self,y):
+         
+        self.compute_dyn_cons(y)
+        X = self.X_cons
+        U = self.U_cons
+        
+        mz = ((self.position_w_y+self.size_y/2.0)-(self.x0[1]+5.0))/(self.dist_wind-self.x0[0])
+        
+        cons = np.array([])
+        grad = np.array([])
+        
+        for i in range(U.shape[0]):
+            if X[i,0] < self.dist_wind:
+                cuz = -X[i,1] + mz*X[i,0] + (self.x0[1]+5.0)
+                cons = np.append(cons,cuz)
+            else:
+                cuz = 0
+                cons = np.append(cons,cuz)
+                
+        return cons
+
 
         
 if __name__=='__main__':

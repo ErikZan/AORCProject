@@ -7,3 +7,6 @@ set grid
 
 
 plot filename using 2:4 with lines title "z-path"
+
+
+
