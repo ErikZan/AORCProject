@@ -59,13 +59,13 @@ class SingleShootingProblem:
         self.bound_psi = 1.05 # 0.78 -> 45 deg
         self.grad_psi = np.array([])
         
-        self.dist_wind =2.0
+        self.dist_wind =3.0
         self.offset = 0.25
         
-        self.position_w_y = 2.0
+        self.position_w_y = -2.0
         self.size_y =1.0
         
-        self.position_w_z = 3.0
+        self.position_w_z = -2.0
         self.size_z =1.0
         self.grad_line_dwn = np.array([])
         
@@ -181,7 +181,7 @@ class SingleShootingProblem:
     # Solve with bounds and costraints 
     """
     Constraint on drone angles works quite well.
-    For the window two different types of constraints are implemented, but the recommended ("working") one is cons_line_ type
+    For the window two different types of constraints are implemented, but the recommended one is zwindows,ywindows.
     """
     def solve_bounds(self, y0=None, method='BFGS', use_finite_difference=False,bnds=None):
         ''' Solve the optimal control problem '''
@@ -192,20 +192,16 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method,  # never used 
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method,   
                      callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 100, 'disp': True },bounds=bnds, # maximum iteration number
+                     callback=self.clbk, options={'maxiter': 50, 'disp': True },bounds=bnds, # maximum iteration number
                      constraints=(
                          {'type':'ineq','fun': self.fun_cons_phi},  
                                   {'type':'ineq','fun': self.fun_cons_theta},
-                                   {'type':'ineq','fun': self.fun_cons_phi},
-                                    {'type':'ineq','fun': self.fun_cons_psi},
-                                  # {'type':'ineq','fun': self.cons_line_up}, # 'jac': Jacobian functions are implemented 
-                                  # {'type':'ineq','fun': self.cons_line_dwn}, # but we are not able to make it work in the optimizer
-                                  # {'type':'ineq','fun': self.cons_line_left},
-                                  # {'type':'ineq','fun': self.cons_line_right} 
+                                   {'type':'ineq','fun': self.fun_cons_phi},# 'jac': Jacobian functions are implemented
+                                    {'type':'ineq','fun': self.fun_cons_psi}, # but we are not able to make it work in the optimizer
                                     {'type':'ineq','fun': self.zwindows},
                                     {'type':'ineq','fun': self.ywindows}
                                   ))
@@ -327,7 +323,7 @@ class SingleShootingProblem:
         return cons
     
     """
-    windows
+    Windows constraints : "piecewise" function ... 
     """
     def ywindows(self,y):
         self.compute_dyn_cons(y) 
@@ -342,9 +338,9 @@ class SingleShootingProblem:
         grad = np.array([])
         
         for i in range(U.shape[0]):
-            if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
+            if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset: 
             #if X[i,0] > self.dist_wind-self.offset:
-                cry = -np.absolute(X[i,1] - self.position_w_y) + self.size_y/2
+                cry = -np.absolute(np.absolute(X[i,1]) - np.absolute(self.position_w_y)) + self.size_y/2 - 0.2 # 0.2 is a offset taking in account to
                 cons = np.append(cons,cry)
             else:
                 cry = 0
@@ -367,14 +363,16 @@ class SingleShootingProblem:
         for i in range(U.shape[0]):
             if X[i,0] > self.dist_wind-self.offset and X[i,0] < self.dist_wind+self.offset:
             #if X[i,0] > self.dist_wind-self.offset:
-                cuz = -np.absolute(X[i,2] - self.position_w_z) + self.size_z/2
+                cuz = -np.absolute(np.absolute(X[i,2]) - np.absolute(self.position_w_z)) + self.size_z/2 - 0.2
                 cons = np.append(cons,cuz)
                 grad = np.append(grad,grad1)
             else:
                 cuz = 0
                 cons = np.append(cons,cuz)
         return cons
-    
+    """
+    compute_dyn_cons() compute the dynamics and update a class variable so it can be used in the calculation of constraints
+    """
     def compute_dyn_cons(self,y):
         if np.array_equal(y,self.U_cons):
 
@@ -386,7 +384,10 @@ class SingleShootingProblem:
                                                         self.dt, self.N, 
                                                         self.integration_scheme)
         return 0
-     
+    """
+    cons_line construct a line of constraints generating a sort of "funnel" guiding the drone to the edge of the windows
+    it doesn't works very well!
+    """
     def cons_line_dwn(self,y):
         
         self.compute_dyn_cons(y)
@@ -416,7 +417,7 @@ class SingleShootingProblem:
                 grad += np.array([-100.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).dot(dXdU[i*nx:(i+1)*nx,:])
         self.grad_line_dwn = grad  
         return cons
-    
+    #Jacobian  ----------------
     def jac_cons_line_dwn(self,y):
 
         return self.grad_line_dwn
@@ -501,72 +502,80 @@ if __name__=='__main__':
    
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
     
-    dt = conf.dt                 # time step
+    dt = conf.dt          # time step
     T = conf.T
     N = int(T/dt)        # horizon size
     PLOT_STUFF = 1
-    thrust_guess = np.tile(np.array([4.6,0.0,0.0,0.0]),(N))
+    thrust_guess = np.tile(np.array([4.55,0.0,0.0,0.0]),(N)) # Initial guess is only counter balance gravity force 
     linestyles = ['-*', '--*', ':*', '-.*']
-    ode = ode('ode',get_quad_data('Quad1'),conf.dt)
+    
+    ode = ode('ode',get_quad_data('Quad1'),conf.dt) # 
+    
     # create OCP
     problem = SingleShootingProblem('ssp', ode, conf.x0, dt, N, conf.integration_scheme)
     
-    # simulate motion with initial guess    
-        #Noooope meme
-    # create cost function terms
+   
     final_cost_state = OCPFinalCostState( conf.q_des, conf.v_des, conf.weight_vel)
     problem.add_final_cost(final_cost_state)
     effort_cost = OCPRunningCostQuadraticControl(dt,conf.weight_run_state) # effort cost modificato
-    problem.add_running_cost(effort_cost, conf.weight_r) 
+    problem.add_running_cost(effort_cost, conf.weight_r)
+     
+    # to plot with gnuplot
+      
+    line_z= np.array([[problem.dist_wind,problem.position_w_z-problem.size_z/2-3.0,problem.dist_wind,problem.position_w_z+problem.size_z/2],[problem.dist_wind,problem.position_w_z-problem.size_z/2,problem.dist_wind,problem.position_w_z+problem.size_z/2+3.0]])
+    np.savetxt("/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/zup.txt", pd.DataFrame(line_z).values)
+    
+    line_y= np.array([[problem.dist_wind,problem.position_w_y-problem.size_y/2-3.0,problem.dist_wind,problem.position_w_y+problem.size_y/2],[problem.dist_wind,problem.position_w_y-problem.size_y/2,problem.dist_wind,problem.position_w_y+problem.size_y/2+3.0]])
+    np.savetxt("/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/yup.txt", pd.DataFrame(line_y).values)
+    """
+    # Cost on trajectory, not working as expected
     
     #traj_cost = OCPFinalCostLength(conf.q_des, conf.v_des, conf.weight_vel,dt,N)
     #problem.add_final_cost(traj_cost)
+    
+    # Constraint as a cost, non working very well, see OCPRunningConstraint for implementation
+    
     #constraint = OCPRunningConstraint(dt,conf.weight_const,conf.x0,problem.position_w_z,problem.size_z,problem.dist_wind,N) # da cambiare
-    #problem.add_running_cost(constraint,conf.weight_r)   
-#    problem.sanity_check_cost_gradient()
-   
+    #problem.add_running_cost(constraint,conf.weight_r) 
+    """  
+
     """
     # solve OCP
+    
+    Used only initially to solve uncostrained problem
+    
 #    problem.solve(method='Nelder-Mead') # solve with non-gradient based solver
     problem.solve(use_finite_difference=conf.use_finite_difference)
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)
-    
-     
     """    
-    # Buonds on u value # sono bound su gli input, il problema è che non riesco a fare bound sugli stati, non so come passarli alla funzione
-    a = (-0.05,0.05) # quindi questi bound sono in teoria su manovra phi,theta,psi quelli (None,NOne ) e quello solo positivi il trust
-    b = (0.0,10.0) # de ve essere superiore a zero
+    # Buonds on u value 
+    a = (-0.05,0.05) # torque along axis bounds
+    b = (0.0,10.0) # Thrust bound, only positive # 
     bnds = (b,a,a,a)*N
-    #print('bounds:', bnds)
     
-    # bounds on X state value, implemented as constraints ?
-    """cons1 = {'type': 'ineq', 'fun': compute_cost_w_gradient_fd.X[3] +0.1 } 
-    cons2 = {'type': 'ineq', 'fun': -compute_cost_w_gradient_fd.X[3] -0.1 }
+    # Solve the OCP problem
     
-    all_cons = [cons1,cons2] # 
-    """
-    # function that use bounds
-    
-    problem.solve_bounds(method='slsqp',y0=thrust_guess,use_finite_difference=conf.use_finite_difference,bnds=bnds) # l-bfgs-b -> sucks // slsqp -> several runtime error or NaN
+    problem.solve_bounds(method='slsqp',y0=thrust_guess,use_finite_difference=conf.use_finite_difference,bnds=bnds) 
     print('U norm:', norm(problem.U))
     print('X_N\n', problem.X[-1,:].T)                                       
     
-    import datetime
-
-    datetime_object = datetime.datetime.minute
     pd.DataFrame(problem.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/optimizationresult.csv")
     pd.DataFrame(problem.U).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/U_control.csv")
     
-    mz = ((problem.position_w_z-problem.size_z/2)-(problem.X[2]-5.0))/(problem.dist_wind-problem.x0[0])
+  
     
-    #Y=np.zeros(1)
-    #for i in range(N):
-    #    Y=np.append(Y,[mz*problem.X[i,0] + problem.x0[2]-5.0])
-
-    #print(Y)
-    # all in one plot
     
+    
+    #lines_3d= np.array([[problem.dist_wind,problem.position_w_y-problem.size_y/2,problem.position_w_z,problem-problem.size_z/2.dist_wind,problem.position_w_y+problem.size_y/2.0,problem.position_w_z,  problem.dist_wind,problem.position_w_y,problem.position_w_z+problem.size_z/2,    problem.dist_wind,problem.position_w_y+problem.size_y/2,problem.position_w_z+problem.size_z/2]])
+                        
+                        
+    #np.savetxt("/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/3dlines.txt", pd.DataFrame(lines_3d).values)
+    
+    
+    
+     # Plot graph to veify bound on Thrust,angle and trajectory
+     
     f, ax = plut.create_empty_figure(1)
     time = np.arange(0.0, T+dt, dt)
     time = time[:N]
@@ -594,11 +603,21 @@ if __name__=='__main__':
     
     
     f, ax = plut.create_empty_figure(1)
-    time = np.arange(0.0, T+dt, dt)
-    time = time[:N]
     ax.plot(problem.X[:N,0], problem.X[:N,1], label ='path y')
     ax.plot(problem.X[:N,0], problem.X[:N,2], label ='path z')
-    #ax.plot(problem.X[:N,0], Y[:N], label ='cons')
     ax.legend()
     matplot.pyplot.xlabel('X-coord [m]')
     plt.show() 
+    
+    f, ax = plut.create_empty_figure(1)
+    ax.plot(problem.X[:N,0], problem.X[:N,1], label ='path y')
+    ax.legend()
+    matplot.pyplot.xlabel('X-coord [m]')
+     
+    
+    
+    f, ax = plut.create_empty_figure(1)
+    ax.plot(problem.X[:N,0], problem.X[:N,1], label ='path y')
+    ax.legend()
+    matplot.pyplot.xlabel('X-coord [m]')
+    #plt.show() 

@@ -15,7 +15,7 @@ class Empty:
         
         
 class OCPFinalCostState:
-    ''' Cost function for reaching a desired state of the robot
+    ''' Cost function for reaching a desired state of the drone
     '''
     def __init__(self, q_des, v_des, weight_vel):
         
@@ -44,7 +44,7 @@ class OCPFinalCostState:
         return (cost, grad)
         
 class OCPFinalCostLength:
-    ''' Cost function for reaching a desired state of the robot
+    ''' Cost function on trajectory (not working => it'a a RunningCost)
     '''
     def __init__(self, q_des, v_des, weight_vel,dt,N):
         
@@ -77,13 +77,13 @@ class OCPRunningCostQuadraticControl:
         
     def compute_w_gradient(self, x, u, t, recompute=True):
         ''' Compute the cost for a single time instant and its gradient w.r.t. x and u '''
-        cost = 0.5*self.weight_run_state.dot(x).dot(x)  
+        cost = 0.5*u.dot(u) + 0.5*self.weight_run_state.dot(x).dot(x)  
         grad_x = self.weight_run_state.dot(x)
-        grad_u = np.zeros(u.shape[0])
+        grad_u = u
         return (cost, grad_x, grad_u)
     
 class OCPRunningConstraint:
-    ''' Quadratic cost function for penalizing control inputs '''
+    ''' Running cost instead of constraint for the window : not properly working, very sensitive on x0  '''
     def __init__(self, dt, weight_run_state,x0,position_w_z,size_z,dist_wind,N):
         self.dt = dt
         self.weight_run_state = weight_run_state

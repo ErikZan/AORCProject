@@ -3,7 +3,7 @@ from quadcopter_parameter import get_quad_data
 import math
 
 class Control_dynamics_1:
-    ''' An ordinary differential equation representing a robotic system
+    ''' An ordinary differential equation representing a drone system
     '''
     
     def __init__(self, name, param,dt):
@@ -22,7 +22,8 @@ class Control_dynamics_1:
         #self.A = param.A            # areodynamic drag coefficient
         
         
-    ''' System dynamics '''
+    ''' System dynamics
+    generated and exported with Maple '''
     def f(self, x, u, t, jacobian=False):
         #nq = 6
         #nv = 6
