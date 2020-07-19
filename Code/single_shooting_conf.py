@@ -12,8 +12,8 @@ from math import sqrt
 np.set_printoptions(precision=3, linewidth=200, suppress=True)
 LINE_WIDTH = 60
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
-T = 3.0     # 1,5                  # OCP horizon
-dt = 0.075                  # OCP time step
+T = 2.5     # 1,5                  # OCP horizon
+dt = 0.1                  # OCP time step
 integration_scheme = 'RK-4'
 use_finite_difference = False
 weight_vel = 0.0001          #a=0.5              # cost function weight for final velocity (for position it's implicitely 1)
@@ -21,7 +21,7 @@ weight_vel = 0.0001          #a=0.5              # cost function weight for fina
 #weight_run_state= 2300000.0 #a=2300000.0        # np.identity(12) # weight matrix for the state
 weight_const = 0.001     
 weight_r= 1.0           #a=0.1e-7           # weight of runnig cost
-q_des = np.array([6.0,1.0,0.0,0.0,0.0,0.0])
+q_des = np.array([5.0,0.0,-3.0,0.0,0.0,0.0])
 v_des = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 weight_run_state = np.array([
         [0.0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],

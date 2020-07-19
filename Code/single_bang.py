@@ -56,8 +56,11 @@ class SingleShootingProblem:
         self.bound_theta = 1.05 # 0.78 -> 45 deg
         self.grad_theta = np.array([])
         
+        self.bound_psi = 1.05 # 0.78 -> 45 deg
+        self.grad_psi = np.array([])
+        
         self.dist_wind =2.0
-        self.offset = 0.1
+        self.offset = 0.25
         
         self.position_w_y = 2.0
         self.size_y =1.0
@@ -175,7 +178,11 @@ class SingleShootingProblem:
         self.last_cost = cost        
         return (cost, grad)
         
-    
+    # Solve with bounds and costraints 
+    """
+    Constraint on drone angles works quite well.
+    For the window two different types of constraints are implemented, but the recommended ("working") one is cons_line_ type
+    """
     def solve_bounds(self, y0=None, method='BFGS', use_finite_difference=False,bnds=None):
         ''' Solve the optimal control problem '''
         # if no initial guess is given => initialize with zeros
@@ -185,22 +192,25 @@ class SingleShootingProblem:
         self.iter = 0
         print('Start optimizing')
         if(use_finite_difference):
-            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method, # 
-                     callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) # cons not implemented 
+            r = minimize(self.compute_cost_w_gradient_fd, y0, jac=True, method=method,  # never used 
+                     callback=self.clbk, options={'maxiter': 20, 'disp': True},bounds=bnds) 
         else:
             r = minimize(self.compute_cost_w_gradient, y0, jac=True, method=method, 
-                     callback=self.clbk, options={'maxiter': 250, 'disp': True },bounds=bnds,
+                     callback=self.clbk, options={'maxiter': 100, 'disp': True },bounds=bnds, # maximum iteration number
                      constraints=(
-                         {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_phi
+                         {'type':'ineq','fun': self.fun_cons_phi},  
                                   {'type':'ineq','fun': self.fun_cons_theta},
-                                   {'type':'ineq','fun': self.fun_cons_phi}, # ,'jac':self.jac_cons_theta
-                                   {'type':'ineq','fun': self.cons_line_up},
-                                   {'type':'ineq','fun': self.cons_line_dwn},
-                                   {'type':'ineq','fun': self.cons_line_left},
-                                   {'type':'ineq','fun': self.cons_line_right}  #  ,'jac':self.jac_cons_line_dwn                  np.tile( ,(self.N)) ,,'jac':lambda x : np.array([1.0,0.0,0.0,0.0])
+                                   {'type':'ineq','fun': self.fun_cons_phi},
+                                    {'type':'ineq','fun': self.fun_cons_psi},
+                                  # {'type':'ineq','fun': self.cons_line_up}, # 'jac': Jacobian functions are implemented 
+                                  # {'type':'ineq','fun': self.cons_line_dwn}, # but we are not able to make it work in the optimizer
+                                  # {'type':'ineq','fun': self.cons_line_left},
+                                  # {'type':'ineq','fun': self.cons_line_right} 
+                                    {'type':'ineq','fun': self.zwindows},
+                                    {'type':'ineq','fun': self.ywindows}
                                   ))
         return r
-    
+    # Used only without Bounds 
     def solve(self, y0=None, method='BFGS', use_finite_difference=False):
         ''' Solve the optimal control problem '''
         # if no initial guess is given => initialize with zeros
@@ -235,10 +245,9 @@ class SingleShootingProblem:
     def clbk(self, xk):
         print('Iter %3d, cost %5f'%(self.iter, self.last_cost))
         self.iter += 1
-       
+        # Save the trajectories evolutions for Maple ang gnuplot
         file = pd.DataFrame(self.X).to_csv(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.csv")
         np.savetxt(f"/home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/file{self.iter}.txt", pd.DataFrame(self.X).values, fmt='%f')
-        #os.system("./home/test/Desktop/Desktop/GitAORC/AORCProject/Code/stored_trajectory/plot_stuff.sh")
         #file = True
         return file
 
@@ -264,11 +273,10 @@ class SingleShootingProblem:
             cons = np.append(cons,ci)
         self.grad_phi = grad
         return cons
-
+    #Jacobian of phi ----------------
     def jac_cons_phi(self,y):
 
         return self.grad_phi
-
 
     #Bounds on theta ----------------
     def fun_cons_theta(self, y ):
@@ -291,7 +299,12 @@ class SingleShootingProblem:
             cons = np.append(cons,ci)
         self.grad_theta = grad
         return cons
-
+    #Jacobian of theta ----------------
+    def jac_cons_theta(self,y):
+  
+        return self.grad_theta
+    
+    #Bounds on psi ----------------
     def fun_cons_psi(self, y ):
         
         self.compute_dyn_cons(y) 
@@ -313,16 +326,18 @@ class SingleShootingProblem:
         self.grad_theta = grad
         return cons
     
-    def jac_cons_theta(self,y):
-
-        return self.grad_theta
-    
+    """
+    windows
+    """
     def ywindows(self,y):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
+        self.compute_dyn_cons(y) 
+        X = self.X_cons
+        U = self.U_cons
+        dXdU =self.dXdU_cons  
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N 
         cons = np.array([])
         grad = np.array([])
         
@@ -331,14 +346,21 @@ class SingleShootingProblem:
             #if X[i,0] > self.dist_wind-self.offset:
                 cry = -np.absolute(X[i,1] - self.position_w_y) + self.size_y/2
                 cons = np.append(cons,cry)
+            else:
+                cry = 0
+                cons = np.append(cons,cry)
         return cons
     
     def zwindows(self,y):
-        U = y.reshape((self.N, self.nu))
-        t0 = 0.0
-        X, dXdU = self.integrator.integrate_w_sensitivities_u(self.ode, self.x0, U, t0, 
-                                                        self.dt, self.N, 
-                                                        self.integration_scheme)
+        self.compute_dyn_cons(y) 
+        X = self.X_cons
+        U = self.U_cons
+        dXdU =self.dXdU_cons  
+
+        nx = self.nx
+        nu = self.nu
+        N = self.N 
+        
         cons = np.array([])
         grad = np.array([])
         grad1 = np.array([1.0,0.0,0.0,0.0])
@@ -348,7 +370,9 @@ class SingleShootingProblem:
                 cuz = -np.absolute(X[i,2] - self.position_w_z) + self.size_z/2
                 cons = np.append(cons,cuz)
                 grad = np.append(grad,grad1)
-                
+            else:
+                cuz = 0
+                cons = np.append(cons,cuz)
         return cons
     
     def compute_dyn_cons(self,y):
@@ -536,11 +560,11 @@ if __name__=='__main__':
     
     mz = ((problem.position_w_z-problem.size_z/2)-(problem.X[2]-5.0))/(problem.dist_wind-problem.x0[0])
     
-    Y=np.zeros(1)
-    for i in range(N):
-        Y=np.append(Y,[mz*problem.X[i,0] + problem.x0[2]-5.0])
+    #Y=np.zeros(1)
+    #for i in range(N):
+    #    Y=np.append(Y,[mz*problem.X[i,0] + problem.x0[2]-5.0])
 
-    print(Y)
+    #print(Y)
     # all in one plot
     
     f, ax = plut.create_empty_figure(1)
